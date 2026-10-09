@@ -326,6 +326,23 @@ li[role="option"], li[role="option"] * {
   color: #173d25 !important;
 }
 
+/* Sidebar menu labels: white, bold text with a deep-green button for contrast. */
+[data-testid="stSidebar"] .stButton > button,
+[data-testid="stSidebar"] .stButton > button p,
+[data-testid="stSidebar"] .stButton > button span,
+[data-testid="stSidebar"] .stButton > button div {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 800 !important;
+}
+[data-testid="stSidebar"] .stButton > button {
+  background: #245d3a !important;
+  border: 1px solid #245d3a !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+  background: #17492b !important;
+  border-color: #17492b !important;
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
