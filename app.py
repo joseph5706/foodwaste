@@ -512,30 +512,64 @@ def remove_item(item_id):
     st.session_state.pantry = [x for x in st.session_state.pantry if x["id"] != item_id]
 
 def make_recipes(preferences):
+    """Generate recipes from the live AI API; never silently return demo recipes."""
     items = sorted(st.session_state.pantry, key=days_left)
     ingredients = [x["name"] for x in items if days_left(x) >= 0]
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    if api_key:
-        endpoint = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1/chat/completions")
-        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        prompt = ("Create 3 practical recipes using these ingredients first: " + ", ".join(ingredients) +
-                  ". Dietary preferences: " + preferences +
-                  ". For each recipe include title, ingredients, 3-5 steps, time, and which pantry items it helps use. "
-                  "Do not advise eating potentially unsafe food. Return readable plain text.")
-        payload = {"model": model, "messages": [
-            {"role":"system","content":"You are FoodWise, a practical food-waste reduction assistant. Never advise eating food that may be unsafe. Smell and appearance cannot guarantee safety."},
-            {"role":"user","content":prompt}], "temperature":0.5}
-        try:
-            req = urllib.request.Request(endpoint, data=json.dumps(payload).encode(), headers={"Content-Type":"application/json", "Authorization":"Bearer " + api_key})
-            with urllib.request.urlopen(req, timeout=20) as response:
-                return json.loads(response.read().decode())["choices"][0]["message"]["content"], "AI-powered"
-        except Exception:
-            pass
-    items_text = ", ".join(ingredients) if ingredients else "your available pantry ingredients"
-    return (f"1. Pantry Vegetable Rice Bowl (15–20 min)\nUse first: {items_text}\nSteps: Check that every ingredient has been stored safely. Cook vegetables thoroughly, add freshly prepared or safely stored rice, heat through until steaming hot, then season to taste.\n\n"
-            f"2. Quick Vegetable Sauté (10–15 min)\nUse first: vegetables from your pantry\nSteps: Wash fresh vegetables, chop them, sauté until cooked through, season, and serve with a suitable grain.\n\n"
-            f"3. Simple Yogurt Bowl or Raita (5–8 min)\nUse first: fresh, properly refrigerated yogurt and suitable vegetables\nSteps: Wash and chop vegetables, mix with fresh yogurt, add seasoning, and keep chilled until serving.\n\n"
-            "These are general starter ideas. Adjust ingredients to your dietary needs and follow food-safety guidance. " + ("Preferences noted: " + preferences if preferences else ""), "Smart demo mode")
+
+    # Streamlit Cloud secrets are preferred; environment variables also work locally.
+    try:
+        api_key = st.secrets.get("OPENAI_API_KEY", "")
+        endpoint = st.secrets.get("OPENAI_BASE_URL", "https://api.openai.com/v1/chat/completions")
+        model = st.secrets.get("OPENAI_MODEL", "gpt-4o-mini")
+    except Exception:
+        api_key = ""
+        endpoint = "https://api.openai.com/v1/chat/completions"
+        model = "gpt-4o-mini"
+    api_key = api_key or os.getenv("OPENAI_API_KEY", "")
+    endpoint = os.getenv("OPENAI_BASE_URL", endpoint)
+    model = os.getenv("OPENAI_MODEL", model)
+
+    if not api_key:
+        return ("Live AI is not configured yet. To enable real-time recipe generation, open your Streamlit Cloud app → Settings → Secrets and add:\n\n"
+                'OPENAI_API_KEY = "your_api_key_here"\n'
+                'OPENAI_MODEL = "gpt-4o-mini"\n\n'
+                "Save the secrets and restart/redeploy the app. Keep your API key private. This app will not show sample recipes as if they were AI-generated."), "Setup required"
+
+    if not ingredients:
+        ingredients = ["no eligible pantry ingredients currently added"]
+    prompt = (
+        "Create 3 practical recipes prioritizing these pantry ingredients: " + ", ".join(ingredients) +
+        ". Dietary preferences: " + (preferences.strip() or "none specified") +
+        ". Give each recipe a title, preparation/cooking time, ingredient quantities, 3-6 numbered steps, "
+        "and identify which pantry items it helps use first. Suggest reasonable basic pantry staples if needed. "
+        "Do not recommend using food that may be spoiled or unsafe. Explain that smell and appearance cannot guarantee safety. "
+        "Use clear, readable Markdown and concise practical instructions."
+    )
+    payload = {"model": model, "messages": [
+        {"role": "system", "content": "You are FoodWise AI, a helpful cooking assistant focused on reducing food waste. Prioritize the user's pantry, respect dietary preferences, and never advise eating unsafe or spoiled food."},
+        {"role": "user", "content": prompt}
+    ], "temperature": 0.7}
+    req = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer " + api_key}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=60) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        answer = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        if not answer:
+            return "The AI service returned an empty response. Please try again.", "AI response unavailable"
+        return answer, "Live AI · " + model
+    except Exception as exc:
+        # Show a helpful but non-sensitive message; do not reveal credentials.
+        status = getattr(exc, "code", None)
+        if status == 401:
+            message = "The AI API key was rejected. Check OPENAI_API_KEY in Streamlit Cloud Secrets."
+        elif status == 429:
+            message = "The AI API quota or rate limit was reached. Check your API billing/limits, then try again."
+        elif status:
+            message = f"The AI service returned HTTP {status}. Check your API settings and try again."
+        else:
+            message = "Could not reach the AI service. Check the app's internet/API configuration and try again."
+        return message, "AI connection error"
 
 with st.sidebar:
     st.markdown("# ✳ foodwise<span style='color:#2e7547'>.ai</span>", unsafe_allow_html=True)
