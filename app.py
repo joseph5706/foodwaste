@@ -281,6 +281,25 @@ li[role="option"], li[role="option"] * {
   color: #173d25 !important;
   -webkit-text-fill-color: #173d25 !important;
 }
+/* Pantry action labels: allow readable full labels and comfortable button height. */
+[data-testid="stVerticalBlock"] [data-testid="stButton"] > button {
+  width: 100% !important;
+  min-height: 44px !important;
+  height: auto !important;
+  padding: 0.65rem 0.45rem !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.25 !important;
+  word-break: normal !important;
+  font-size: 0.92rem !important;
+}
+[data-testid="stHorizontalBlock"] [data-testid="stButton"] p {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
 /* Some Streamlit builds use react-datepicker class names instead of BaseWeb. */
 .react-datepicker,
 .react-datepicker__month-container,
@@ -491,8 +510,9 @@ elif st.session_state.page == "My Pantry":
             with col:
                 warning_style = "background:#fff0ef;border:1px solid #f2b8b5;border-radius:8px;padding:9px 10px;font-weight:700;" if date_text.startswith("⚠️") else ""
                 st.markdown(f"<div class='panel'><div style='font-size:28px'>{emoji_for(item['name'])}</div><h3>{item['name']}</h3><p class='sub'>{item['quantity']} · {item['category']}</p><p style='font-size:12px;color:{date_color};{warning_style}'>{date_text}</p></div>", unsafe_allow_html=True)
-                b1, b2, b3 = st.columns(3)
-                if b1.button("✓ I used it", key=f"used_{item['id']}", use_container_width=True):
+                # Give the two important actions half-width each so their labels are not clipped.
+                action_left, action_right = st.columns(2, gap="small")
+                if action_left.button("✓ I used it", key=f"used_{item['id']}", use_container_width=True):
                     st.session_state.saved_log.append({
                         "name": item["name"], "quantity": item["quantity"],
                         "category": item["category"], "cost": float(item.get("cost", 30.0)),
@@ -501,7 +521,7 @@ elif st.session_state.page == "My Pantry":
                     remove_item(item["id"])
                     st.session_state.foodwise_flash = f"{item['name']} logged under Used / rescued (estimated ₹30 saved)."
                     st.rerun()
-                if b2.button("✕ Wasted", key=f"wasted_{item['id']}", use_container_width=True):
+                if action_right.button("✕ Wasted", key=f"wasted_{item['id']}", use_container_width=True):
                     st.session_state.waste_log.append({
                         "name": item["name"], "quantity": item["quantity"],
                         "category": item["category"], "cost": float(item.get("cost", 30.0)),
@@ -511,8 +531,9 @@ elif st.session_state.page == "My Pantry":
                     remove_item(item["id"])
                     st.session_state.foodwise_flash = f"{item['name']} logged under Not used / wasted."
                     st.rerun()
-                if b3.button("Remove", key=f"remove_{item['id']}", use_container_width=True):
-                    remove_item(item["id"]); st.rerun()
+                if st.button("Remove item", key=f"remove_{item['id']}", use_container_width=True, type="secondary"):
+                    remove_item(item["id"])
+                    st.rerun()
     if st.session_state.get("foodwise_flash"):
         st.success(st.session_state.foodwise_flash)
         del st.session_state.foodwise_flash
