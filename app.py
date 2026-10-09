@@ -512,37 +512,35 @@ def remove_item(item_id):
     st.session_state.pantry = [x for x in st.session_state.pantry if x["id"] != item_id]
 
 def make_recipes(preferences):
-    """Generate recipes from the live AI API; never silently return demo recipes."""
+    """Generate recipes with the live Google Gemini API; never return demo recipes."""
     items = sorted(st.session_state.pantry, key=days_left)
     ingredients = [x["name"] for x in items if days_left(x) >= 0]
 
-    # Streamlit Cloud secrets are preferred; environment variables also work locally.
+    # Read Gemini credentials from Streamlit Cloud Secrets, or environment variables locally.
     try:
-        api_key = st.secrets.get("OPENAI_API_KEY", "")
-        endpoint = st.secrets.get("OPENAI_BASE_URL", "https://api.openai.com/v1/chat/completions")
-        model = st.secrets.get("OPENAI_MODEL", "gpt-4o-mini")
+        api_key = st.secrets.get("GEMINI_API_KEY", "")
+        model = st.secrets.get("GEMINI_MODEL", "gemini-2.5-flash")
     except Exception:
         api_key = ""
-        endpoint = "https://api.openai.com/v1/chat/completions"
-        model = "gpt-4o-mini"
-    api_key = api_key or os.getenv("OPENAI_API_KEY", "")
-    # Clean accidental whitespace/newlines and a commonly pasted "Bearer " prefix.
+        model = "gemini-2.5-flash"
+
+    api_key = os.getenv("GEMINI_API_KEY", api_key) or api_key
+    model = os.getenv("GEMINI_MODEL", model) or model
     api_key = str(api_key or "").strip().strip('"').strip("'")
-    if api_key.lower().startswith("bearer "):
-        api_key = api_key[7:].strip()
-    endpoint = str(os.getenv("OPENAI_BASE_URL", endpoint) or endpoint).strip().rstrip("/")
-    if endpoint.endswith("/v1"):
-        endpoint += "/chat/completions"
-    model = str(os.getenv("OPENAI_MODEL", model) or model).strip()
+    model = str(model or "gemini-2.5-flash").strip()
 
     if not api_key:
-        return ("Live AI is not configured yet. To enable real-time recipe generation, open your Streamlit Cloud app → Settings → Secrets and add:\n\n"
-                'OPENAI_API_KEY = "your_api_key_here"\n'
-                'OPENAI_MODEL = "gpt-4o-mini"\n\n'
-                "Save the secrets and restart/redeploy the app. Keep your API key private. This app will not show sample recipes as if they were AI-generated."), "Setup required"
+        return (
+            "Live Gemini AI is not configured yet. Open your Streamlit Cloud app → Settings → Secrets and add:\n\n"
+            'GEMINI_API_KEY = "your_gemini_api_key_here"\n'
+            'GEMINI_MODEL = "gemini-2.5-flash"\n\n'
+            "Create your key at https://aistudio.google.com/app/apikey, save the secrets, then reboot the app. "
+            "Keep your API key private. This app will not show sample recipes as if they were AI-generated."
+        ), "Gemini setup required"
 
     if not ingredients:
         ingredients = ["no eligible pantry ingredients currently added"]
+
     prompt = (
         "Create 3 practical recipes prioritizing these pantry ingredients: " + ", ".join(ingredients) +
         ". Dietary preferences: " + (preferences.strip() or "none specified") +
@@ -551,50 +549,69 @@ def make_recipes(preferences):
         "Do not recommend using food that may be spoiled or unsafe. Explain that smell and appearance cannot guarantee safety. "
         "Use clear, readable Markdown and concise practical instructions."
     )
-    payload = {"model": model, "messages": [
-        {"role": "system", "content": "You are FoodWise AI, a helpful cooking assistant focused on reducing food waste. Prioritize the user's pantry, respect dietary preferences, and never advise eating unsafe or spoiled food."},
-        {"role": "user", "content": prompt}
-    ], "temperature": 0.7}
-    req = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": "Bearer " + api_key}, method="POST")
+
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent"
+    payload = {
+        "systemInstruction": {
+            "parts": [{
+                "text": "You are FoodWise AI, a helpful cooking assistant focused on reducing food waste. "
+                        "Prioritize the user's pantry, respect dietary preferences, and never advise eating unsafe or spoiled food."
+            }]
+        },
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.7}
+    }
+    req = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        method="POST"
+    )
+
     try:
         with urllib.request.urlopen(req, timeout=60) as response:
             data = json.loads(response.read().decode("utf-8"))
-        answer = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        candidates = data.get("candidates", [])
+        parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+        answer = "\n\n".join(
+            part.get("text", "").strip() for part in parts
+            if isinstance(part, dict) and part.get("text", "").strip()
+        ).strip()
         if not answer:
-            return "The AI service returned an empty response. Please try again.", "AI response unavailable"
-        return answer, "Live AI · " + model
+            feedback = data.get("promptFeedback", {})
+            reason = feedback.get("blockReason", "")
+            if reason:
+                return f"Gemini could not generate a recipe for this request (safety block: {reason}). Please adjust your preferences and try again.", "Gemini response blocked"
+            return "Gemini returned an empty response. Please try again.", "Gemini response unavailable"
+        return answer, "Live Gemini AI · " + model
+
     except urllib.error.HTTPError as exc:
-        # Parse provider error text without ever displaying the secret key.
         status = getattr(exc, "code", None)
         try:
             body = json.loads(exc.read().decode("utf-8", errors="replace"))
             err = body.get("error", {}) if isinstance(body, dict) else {}
-            err_code = str(err.get("code", "") or "").lower()
-            err_type = str(err.get("type", "") or "").lower()
-            err_message = str(err.get("message", "") or "").lower()
+            err_message = str(err.get("message", "") or "")
         except Exception:
-            err_code = err_type = err_message = ""
-        if status == 401:
-            message = (
-                "OpenAI rejected the API key (HTTP 401). In Streamlit Cloud → App → Settings → Secrets, "
-                "replace OPENAI_API_KEY with a newly created secret key from https://platform.openai.com/api-keys. "
-                "Paste only the key itself (no 'Bearer', quotes inside the value, or spaces), save, then reboot the app. "
-                "Make sure the key belongs to an OpenAI API project; a ChatGPT password or ChatGPT subscription is not an API key."
-            )
+            err_message = ""
+
+        if status == 400:
+            message = f"Gemini rejected the request (HTTP 400). Check GEMINI_MODEL and request settings. Details: {err_message[:350]}"
+        elif status == 401:
+            message = "Gemini rejected the API key (HTTP 401). Create a new key at https://aistudio.google.com/app/apikey and replace GEMINI_API_KEY in Streamlit Cloud → Settings → Secrets. Paste the Google AI Studio key only, then save and reboot."
         elif status == 403:
-            message = "The API key was recognized but access was denied (HTTP 403). Check project permissions and model access."
+            message = f"Gemini access was denied (HTTP 403). Check that the Google Cloud project has Gemini API access enabled and the key is valid. Details: {err_message[:350]}"
         elif status == 404:
-            message = "The API endpoint or model was not found (HTTP 404). Check OPENAI_BASE_URL and OPENAI_MODEL in Streamlit Secrets."
+            message = f"Gemini model or endpoint not found (HTTP 404). Check GEMINI_MODEL in Streamlit Secrets; try gemini-2.5-flash if available to your project. Details: {err_message[:350]}"
         elif status == 429:
-            message = "The AI API quota or rate limit was reached. Check API billing and usage limits, then try again."
+            message = "Gemini API quota or rate limit reached (HTTP 429). Check your Google AI Studio project quota/billing and try again later."
         elif status:
-            message = f"The AI provider returned HTTP {status}. Check the API endpoint, project permissions, and model settings."
+            message = f"Gemini returned HTTP {status}. Check your API key, model, and project settings. Details: {err_message[:350]}"
         else:
-            message = "The AI service returned an API error. Check the app's API configuration and try again."
-        return message, "AI connection error"
+            message = "Gemini returned an API error. Check the Gemini API configuration and try again."
+        return message, "Gemini connection error"
+
     except Exception:
-        return "Could not reach the AI service. Check the app's internet/API configuration and try again.", "AI connection error"
+        return "Could not reach Gemini. Check the app's internet connection and Gemini API configuration, then try again.", "Gemini connection error"
 
 with st.sidebar:
     st.markdown("# ✳ foodwise<span style='color:#2e7547'>.ai</span>", unsafe_allow_html=True)
