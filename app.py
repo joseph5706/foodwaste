@@ -519,21 +519,21 @@ def make_recipes(preferences):
     # Read Gemini credentials from Streamlit Cloud Secrets, or environment variables locally.
     try:
         api_key = st.secrets.get("GEMINI_API_KEY", "")
-        model = st.secrets.get("GEMINI_MODEL", "gemini-2.5-flash")
+        model = st.secrets.get("GEMINI_MODEL", "gemini-3.8-flash")
     except Exception:
         api_key = ""
-        model = "gemini-2.5-flash"
+        model = "gemini-3.8-flash"
 
     api_key = os.getenv("GEMINI_API_KEY", api_key) or api_key
     model = os.getenv("GEMINI_MODEL", model) or model
     api_key = str(api_key or "").strip().strip('"').strip("'")
-    model = str(model or "gemini-2.5-flash").strip()
+    model = str(model or "gemini-3.8-flash").strip()
 
     if not api_key:
         return (
             "Live Gemini AI is not configured yet. Open your Streamlit Cloud app → Settings → Secrets and add:\n\n"
             'GEMINI_API_KEY = "your_gemini_api_key_here"\n'
-            'GEMINI_MODEL = "gemini-2.5-flash"\n\n'
+            'GEMINI_MODEL = "gemini-3.8-flash"\n\n'
             "Create your key at https://aistudio.google.com/app/apikey, save the secrets, then reboot the app. "
             "Keep your API key private. This app will not show sample recipes as if they were AI-generated."
         ), "Gemini setup required"
@@ -550,16 +550,16 @@ def make_recipes(preferences):
         "Use clear, readable Markdown and concise practical instructions."
     )
 
-    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent"
+    # Google now recommends the Interactions API for new Gemini integrations.
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/interactions"
     payload = {
-        "systemInstruction": {
-            "parts": [{
-                "text": "You are FoodWise AI, a helpful cooking assistant focused on reducing food waste. "
-                        "Prioritize the user's pantry, respect dietary preferences, and never advise eating unsafe or spoiled food."
-            }]
-        },
-        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.7}
+        "model": model,
+        "input": prompt,
+        "system_instruction": (
+            "You are FoodWise AI, a helpful cooking assistant focused on reducing food waste. "
+            "Prioritize the user's pantry, respect dietary preferences, and never advise eating unsafe or spoiled food."
+        ),
+        "generation_config": {"thinking_level": "low"}
     }
     req = urllib.request.Request(
         endpoint,
@@ -571,17 +571,21 @@ def make_recipes(preferences):
     try:
         with urllib.request.urlopen(req, timeout=60) as response:
             data = json.loads(response.read().decode("utf-8"))
-        candidates = data.get("candidates", [])
-        parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
-        answer = "\n\n".join(
-            part.get("text", "").strip() for part in parts
-            if isinstance(part, dict) and part.get("text", "").strip()
-        ).strip()
+        # Interactions API returns output_text in current responses; retain a
+        # fallback parser for responses represented as an output item list.
+        answer = str(data.get("output_text", "") or "").strip()
         if not answer:
-            feedback = data.get("promptFeedback", {})
-            reason = feedback.get("blockReason", "")
-            if reason:
-                return f"Gemini could not generate a recipe for this request (safety block: {reason}). Please adjust your preferences and try again.", "Gemini response blocked"
+            chunks = []
+            for item in data.get("output", []) or []:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("text"):
+                    chunks.append(str(item["text"]).strip())
+                for part in item.get("content", []) or []:
+                    if isinstance(part, dict) and part.get("text"):
+                        chunks.append(str(part["text"]).strip())
+            answer = "\n\n".join(chunk for chunk in chunks if chunk).strip()
+        if not answer:
             return "Gemini returned an empty response. Please try again.", "Gemini response unavailable"
         return answer, "Live Gemini AI · " + model
 
@@ -601,7 +605,7 @@ def make_recipes(preferences):
         elif status == 403:
             message = f"Gemini access was denied (HTTP 403). Check that the Google Cloud project has Gemini API access enabled and the key is valid. Details: {err_message[:350]}"
         elif status == 404:
-            message = f"Gemini model or endpoint not found (HTTP 404). Check GEMINI_MODEL in Streamlit Secrets; try gemini-2.5-flash if available to your project. Details: {err_message[:350]}"
+            message = f"Gemini model or endpoint not found (HTTP 404). Check GEMINI_MODEL in Streamlit Secrets; use gemini-3.8-flash if it is available to your project. Details: {err_message[:350]}"
         elif status == 429:
             message = "Gemini API quota or rate limit reached (HTTP 429). Check your Google AI Studio project quota/billing and try again later."
         elif status:
