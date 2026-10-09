@@ -395,9 +395,16 @@ FOOD_WARNING_DAYS = {
 
 
 def expiry_status(item):
-    """Return a category-aware date reminder without declaring expired food safe."""
+    """Return a category-aware reminder; visual checks matter for fresh produce."""
     days = days_left(item)  # positive = days remaining; negative = days past label date
     category = item.get("category", "Other")
+    if category == "Fruits & vegetables":
+        # Produce freshness varies; use the date as a reminder, not a safety verdict.
+        if days < 0:
+            return ("🥦 Check freshness: if still fresh, use it soon; if rotten, moldy, slimy, or smells unusual, throw it away. Don't taste-test it.", "#a65d22")
+        if days <= 1:
+            return ("🥦 If it's fresh, use it soon; if it's rotten, moldy, slimy, or smells unusual, throw it away. Don't taste-test it.", "#a65d22")
+        return (f"{days} day(s) until date · Check freshness before use; discard if rotten or moldy.", "#788078")
     if category == "Medicines":
         if days < 0:
             return ("⚠️ EXPIRED MEDICINE — DO NOT USE. Ask a pharmacist or healthcare professional how to dispose of it safely.", "#b42318")
