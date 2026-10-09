@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
-import os, json, urllib.request, re
+import os, json, urllib.request, urllib.error, re
 
 st.set_page_config(page_title="FoodWise AI — Save Food. Save Money.", page_icon="🥬", layout="wide")
 
@@ -526,8 +526,14 @@ def make_recipes(preferences):
         endpoint = "https://api.openai.com/v1/chat/completions"
         model = "gpt-4o-mini"
     api_key = api_key or os.getenv("OPENAI_API_KEY", "")
-    endpoint = os.getenv("OPENAI_BASE_URL", endpoint)
-    model = os.getenv("OPENAI_MODEL", model)
+    # Clean accidental whitespace/newlines and a commonly pasted "Bearer " prefix.
+    api_key = str(api_key or "").strip().strip('"').strip("'")
+    if api_key.lower().startswith("bearer "):
+        api_key = api_key[7:].strip()
+    endpoint = str(os.getenv("OPENAI_BASE_URL", endpoint) or endpoint).strip().rstrip("/")
+    if endpoint.endswith("/v1"):
+        endpoint += "/chat/completions"
+    model = str(os.getenv("OPENAI_MODEL", model) or model).strip()
 
     if not api_key:
         return ("Live AI is not configured yet. To enable real-time recipe generation, open your Streamlit Cloud app → Settings → Secrets and add:\n\n"
@@ -558,18 +564,37 @@ def make_recipes(preferences):
         if not answer:
             return "The AI service returned an empty response. Please try again.", "AI response unavailable"
         return answer, "Live AI · " + model
-    except Exception as exc:
-        # Show a helpful but non-sensitive message; do not reveal credentials.
+    except urllib.error.HTTPError as exc:
+        # Parse provider error text without ever displaying the secret key.
         status = getattr(exc, "code", None)
+        try:
+            body = json.loads(exc.read().decode("utf-8", errors="replace"))
+            err = body.get("error", {}) if isinstance(body, dict) else {}
+            err_code = str(err.get("code", "") or "").lower()
+            err_type = str(err.get("type", "") or "").lower()
+            err_message = str(err.get("message", "") or "").lower()
+        except Exception:
+            err_code = err_type = err_message = ""
         if status == 401:
-            message = "The AI API key was rejected. Check OPENAI_API_KEY in Streamlit Cloud Secrets."
+            message = (
+                "OpenAI rejected the API key (HTTP 401). In Streamlit Cloud → App → Settings → Secrets, "
+                "replace OPENAI_API_KEY with a newly created secret key from https://platform.openai.com/api-keys. "
+                "Paste only the key itself (no 'Bearer', quotes inside the value, or spaces), save, then reboot the app. "
+                "Make sure the key belongs to an OpenAI API project; a ChatGPT password or ChatGPT subscription is not an API key."
+            )
+        elif status == 403:
+            message = "The API key was recognized but access was denied (HTTP 403). Check project permissions and model access."
+        elif status == 404:
+            message = "The API endpoint or model was not found (HTTP 404). Check OPENAI_BASE_URL and OPENAI_MODEL in Streamlit Secrets."
         elif status == 429:
-            message = "The AI API quota or rate limit was reached. Check your API billing/limits, then try again."
+            message = "The AI API quota or rate limit was reached. Check API billing and usage limits, then try again."
         elif status:
-            message = f"The AI service returned HTTP {status}. Check your API settings and try again."
+            message = f"The AI provider returned HTTP {status}. Check the API endpoint, project permissions, and model settings."
         else:
-            message = "Could not reach the AI service. Check the app's internet/API configuration and try again."
+            message = "The AI service returned an API error. Check the app's API configuration and try again."
         return message, "AI connection error"
+    except Exception:
+        return "Could not reach the AI service. Check the app's internet/API configuration and try again.", "AI connection error"
 
 with st.sidebar:
     st.markdown("# ✳ foodwise<span style='color:#2e7547'>.ai</span>", unsafe_allow_html=True)
