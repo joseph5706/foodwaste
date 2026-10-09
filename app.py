@@ -871,6 +871,12 @@ else:
     else:
         st.info("No used / rescued items were recorded for this month.")
     st.markdown("### 2. Not used / wasted this month")
+    st.markdown(
+        f"<div class='metric-card'><div class='metric-label'>Total estimated money wasted</div>"
+        f"<div class='metric-value'>{money(month_wasted_value)}</div>"
+        f"<div class='metric-foot'>Based on the value recorded for wasted items this month</div></div>",
+        unsafe_allow_html=True,
+    )
     if wasted_month:
         for row in wasted_month:
             st.markdown(f"- **{row['name']}** — {row.get('quantity', '1 item')} · {row['date']} · estimated value wasted {money(row.get('cost', 30.0))}")
