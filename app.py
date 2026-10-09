@@ -88,6 +88,34 @@ div[data-testid="stAlert"] svg {fill:#2e7547 !important;color:#2e7547 !important
 div[data-testid="stForm"] {background:#fff;border:1px solid #e8ebe4;border-radius:14px;padding:18px;}
 .recipe-box {background:#f0f5e9;border-radius:15px;padding:22px;}
 footer {color:#8b9389;}
+/* Popup, menu, tooltip and dialog contrast fixes: warm light surfaces + readable dark text. */
+[data-baseweb="popover"], [data-baseweb="menu"], [data-testid="stPopover"],
+[data-testid="stDialog"], [role="dialog"], [data-testid="stTooltipContent"],
+[data-testid="stToast"], [data-testid="stNotification"] {
+  background:#fffdf7 !important;
+  color:#202b22 !important;
+  border-color:#d8e3d4 !important;
+}
+[data-baseweb="popover"] *, [data-baseweb="menu"] *, [data-testid="stPopover"] *,
+[data-testid="stDialog"] *, [role="dialog"] *, [data-testid="stTooltipContent"] *,
+[data-testid="stToast"] *, [data-testid="stNotification"] * {
+  color:#202b22 !important;
+  -webkit-text-fill-color:#202b22 !important;
+  opacity:1 !important;
+}
+[data-baseweb="popover"] [role="option"]:hover,
+[data-baseweb="menu"] [role="option"]:hover,
+[role="option"][aria-selected="true"] {
+  background:#e5f1e2 !important;
+}
+[data-testid="stDialog"] button, [role="dialog"] button {
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  background:#2e7547 !important;
+  border-color:#2e7547 !important;
+}
+[data-testid="stTooltipContent"] {background:#fffdf7 !important; box-shadow:0 4px 18px #243b2b22 !important;}
+[data-testid="stAlert"] a, [data-testid="stDialog"] a, [role="dialog"] a {color:#17683a !important; text-decoration:underline !important;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
