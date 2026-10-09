@@ -517,21 +517,21 @@ def make_recipes(preferences):
     # Read Gemini credentials from Streamlit Cloud Secrets, or environment variables locally.
     try:
         api_key = st.secrets.get("GEMINI_API_KEY", "")
-        model = st.secrets.get("GEMINI_MODEL", "gemini-3.8-flash")
+        model = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
     except Exception:
         api_key = ""
-        model = "gemini-3.8-flash"
+        model = "gemini-3.5-flash-lite"
 
     api_key = os.getenv("GEMINI_API_KEY", api_key) or api_key
     model = os.getenv("GEMINI_MODEL", model) or model
     api_key = str(api_key or "").strip().strip('"').strip("'")
-    model = str(model or "gemini-3.8-flash").strip()
+    model = str(model or "gemini-3.5-flash-lite").strip()
 
     if not api_key:
         return (
             "Live Gemini AI is not configured yet. Open your Streamlit Cloud app → Settings → Secrets and add:\n\n"
             'GEMINI_API_KEY = "your_gemini_api_key_here"\n'
-            'GEMINI_MODEL = "gemini-3.8-flash"\n\n'
+            'GEMINI_MODEL = "gemini-3.5-flash-lite"\n\n'
             "Create your key at https://aistudio.google.com/app/apikey, save the secrets, then reboot the app. "
             "Keep your API key private. This app will not show sample recipes as if they were AI-generated."
         ), "Gemini setup required"
@@ -556,7 +556,7 @@ def make_recipes(preferences):
             "You are FoodWise AI, a professional cooking assistant. Generate general recipes without accessing or "
             "using pantry inventory. Respect stated dietary preferences and never advise eating unsafe or spoiled food."
         ),
-        "generation_config": {"thinking_level": "low"}
+        "store": False
     }
     req = urllib.request.Request(
         endpoint,
@@ -568,22 +568,42 @@ def make_recipes(preferences):
     try:
         with urllib.request.urlopen(req, timeout=60) as response:
             data = json.loads(response.read().decode("utf-8"))
-        # Interactions API returns output_text in current responses; retain a
-        # fallback parser for responses represented as an output item list.
-        answer = str(data.get("output_text", "") or "").strip()
+        # Interactions API responses may expose text through output_text or through
+        # steps[].content[].text. Parse both response shapes defensively.
+        chunks = []
+        output_text = data.get("output_text")
+        if isinstance(output_text, str) and output_text.strip():
+            chunks.append(output_text.strip())
+
+        for collection_name in ("output", "steps"):
+            collection = data.get(collection_name, []) or []
+            if isinstance(collection, list):
+                for item in collection:
+                    if not isinstance(item, dict):
+                        continue
+                    if isinstance(item.get("text"), str) and item["text"].strip():
+                        chunks.append(item["text"].strip())
+                    for part in item.get("content", []) or []:
+                        if isinstance(part, dict) and isinstance(part.get("text"), str) and part["text"].strip():
+                            chunks.append(part["text"].strip())
+
+        # Some responses include text under response.content.parts.
+        response_obj = data.get("response", {})
+        if isinstance(response_obj, dict):
+            for part in response_obj.get("parts", []) or []:
+                if isinstance(part, dict) and isinstance(part.get("text"), str) and part["text"].strip():
+                    chunks.append(part["text"].strip())
+
+        # Remove duplicate chunks while preserving order.
+        answer = "\n\n".join(dict.fromkeys(chunks)).strip()
         if not answer:
-            chunks = []
-            for item in data.get("output", []) or []:
-                if not isinstance(item, dict):
-                    continue
-                if item.get("text"):
-                    chunks.append(str(item["text"]).strip())
-                for part in item.get("content", []) or []:
-                    if isinstance(part, dict) and part.get("text"):
-                        chunks.append(str(part["text"]).strip())
-            answer = "\n\n".join(chunk for chunk in chunks if chunk).strip()
-        if not answer:
-            return "Gemini returned an empty response. Please try again.", "Gemini response unavailable"
+            status = str(data.get("status", "unknown"))
+            detail = data.get("error", {})
+            detail_text = detail.get("message", "") if isinstance(detail, dict) else ""
+            return (
+                "Gemini completed the request but returned no readable text "
+                f"(status: {status}). Check the model ID and API response; details: {str(detail_text)[:250] or 'no error details supplied'}."
+            ), "Gemini response unavailable"
         return answer, "Live Gemini AI · " + model
 
     except urllib.error.HTTPError as exc:
@@ -602,7 +622,7 @@ def make_recipes(preferences):
         elif status == 403:
             message = f"Gemini access was denied (HTTP 403). Check that the Google Cloud project has Gemini API access enabled and the key is valid. Details: {err_message[:350]}"
         elif status == 404:
-            message = f"Gemini model or endpoint not found (HTTP 404). Check GEMINI_MODEL in Streamlit Secrets; use gemini-3.8-flash if it is available to your project. Details: {err_message[:350]}"
+            message = f"Gemini model or endpoint not found (HTTP 404). Check GEMINI_MODEL in Streamlit Secrets; confirm that gemini-3.5-flash-lite is enabled for your API key. Details: {err_message[:350]}"
         elif status == 429:
             message = "Gemini API quota or rate limit reached (HTTP 429). Check your Google AI Studio project quota/billing and try again later."
         elif status:
