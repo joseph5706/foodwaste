@@ -1090,7 +1090,7 @@ elif st.session_state.page == "AI Recipe Lab":
     st.markdown("<div class='eyebrow'>CREATIVE COOKING, LESS WASTE</div><h1>AI Recipe Lab<span class='green'>.</span></h1><p class='sub'>Explore practical recipe ideas tailored to your dietary preferences.</p>", unsafe_allow_html=True)
     left, right = st.columns([.8, 1.2], gap="large")
     with left:
-        st.markdown("<div class='recipe-box'><div style='font-size:28px'>♨</div><h2>Recipe recommendations</h2><p>Generate general recipe ideas using common ingredients. Your pantry inventory is not accessed for this feature.</p></div>", unsafe_allow_html=True)
+        st.markdown("<div class='recipe-box'><div style='font-size:28px'>♨</div><h1>Recipe recommendations</h1><p>Generate general recipe ideas using common ingredients. Your pantry inventory is not accessed for this feature.</p></div>", unsafe_allow_html=True)
         preferences = st.text_area("Dietary preferences (optional)", placeholder="e.g. vegetarian, no peanuts, quick meals...")
         if st.button("✦ Generate recipes →", use_container_width=True):
             with st.spinner("Preparing recipe recommendations..."):
