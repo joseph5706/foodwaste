@@ -61,6 +61,19 @@ def days_left(item):
     try: return (date.fromisoformat(item["expiry"]) - date.today()).days
     except Exception: return 999
 
+def expiry_status(item):
+    """Return a clear date-status message for pantry items."""
+    days = days_left(item)
+    if days < -3:
+        return ("⚠️ SPOILAGE RISK — DO NOT USE. This food may be spoiled, unsafe, "
+                "and harmful to your health. Discard it if safety is uncertain.", "#b42318")
+    if days < 0:
+        return ("Date passed — check the product label, storage, and food safety before use.", "#a65d22")
+    if days == 0:
+        return ("Date is today", "#a65d22")
+    return (f"{days} day(s) until date", "#788078")
+
+
 def emoji_for(name):
     pairs = {"spinach":"🥬","tomato":"🍅","rice":"🍚","yogurt":"🥣","carrot":"🥕","apple":"🍎","banana":"🍌","bread":"🍞","milk":"🥛","potato":"🥔","onion":"🧅","egg":"🥚","cheese":"🧀","lemon":"🍋","beans":"🫘","lettuce":"🥗"}
     low = name.lower()
@@ -130,8 +143,8 @@ if st.session_state.page == "Overview":
         if not priority: st.success("Nothing urgent right now ✨ Your pantry is looking good.")
         for item in priority:
             d = days_left(item)
-            due = "Date passed — check safety" if d < 0 else "Date is today" if d == 0 else f"{d} day(s) left"
-            st.markdown(f"<div class='food-row'>{emoji_for(item['name'])}　<b>{item['name']}</b><br><span style='color:#788078;font-size:12px'>{item['quantity']} · {due}</span></div>", unsafe_allow_html=True)
+            due, due_color = expiry_status(item)
+            st.markdown(f"<div class='food-row'>{emoji_for(item['name'])}　<b>{item['name']}</b><br><span style='color:{due_color};font-size:12px;font-weight:{'700' if d < -3 else '400'}'>{item['quantity']} · {due}</span></div>", unsafe_allow_html=True)
         if st.button("View pantry ↗", key="overview_pantry"):
             st.session_state.page = "My Pantry"; st.rerun()
     with right:
@@ -165,9 +178,10 @@ elif st.session_state.page == "My Pantry":
         cols = st.columns(3)
         for col, item in zip(cols, filtered[start:start+3]):
             d = days_left(item)
-            date_text = "Date passed — check safety" if d < 0 else "Date is today" if d == 0 else f"{d} day(s) until date"
+            date_text, date_color = expiry_status(item)
             with col:
-                st.markdown(f"<div class='panel'><div style='font-size:28px'>{emoji_for(item['name'])}</div><h3>{item['name']}</h3><p class='sub'>{item['quantity']} · {item['category']}</p><p style='font-size:12px;color:#a65d22'>{date_text}</p></div>", unsafe_allow_html=True)
+                warning_style = "background:#fff0ef;border:1px solid #f2b8b5;border-radius:8px;padding:9px 10px;font-weight:700;" if d < -3 else ""
+                st.markdown(f"<div class='panel'><div style='font-size:28px'>{emoji_for(item['name'])}</div><h3>{item['name']}</h3><p class='sub'>{item['quantity']} · {item['category']}</p><p style='font-size:12px;color:{date_color};{warning_style}'>{date_text}</p></div>", unsafe_allow_html=True)
                 b1, b2 = st.columns(2)
                 if b1.button("✓ I used it", key=f"used_{item['id']}", use_container_width=True):
                     # Log the rescue immediately so the click updates both dashboard and impact page.
