@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import os, json, urllib.request
 
 st.set_page_config(page_title="FoodWise AI — Save Food. Save Money.", page_icon="🥬", layout="wide")
@@ -367,10 +367,10 @@ if not st.session_state.get("foodwise_splash_shown", False):
 if "pantry" not in st.session_state:
     today = date.today()
     st.session_state.pantry = [
-        {"id": 1, "name": "Spinach", "quantity": "1 bunch", "expiry": (today + timedelta(days=1)).isoformat(), "category": "Fruits & vegetables"},
-        {"id": 2, "name": "Tomatoes", "quantity": "4 pieces", "expiry": (today + timedelta(days=2)).isoformat(), "category": "Fruits & vegetables"},
-        {"id": 3, "name": "Cooked rice", "quantity": "2 cups", "expiry": today.isoformat(), "category": "Rice items"},
-        {"id": 4, "name": "Yogurt", "quantity": "1 cup", "expiry": (today + timedelta(days=3)).isoformat(), "category": "Dairy"},
+        {"id": 1, "name": "Spinach", "quantity": "1 bunch", "expiry": (today + timedelta(days=1)).isoformat(), "category": "Fruits & vegetables", "added_at": datetime.now().isoformat(timespec="seconds")},
+        {"id": 2, "name": "Tomatoes", "quantity": "4 pieces", "expiry": (today + timedelta(days=2)).isoformat(), "category": "Fruits & vegetables", "added_at": datetime.now().isoformat(timespec="seconds")},
+        {"id": 3, "name": "Cooked rice", "quantity": "2 cups", "expiry": today.isoformat(), "category": "Rice items", "added_at": datetime.now().isoformat(timespec="seconds")},
+        {"id": 4, "name": "Yogurt", "quantity": "1 cup", "expiry": (today + timedelta(days=3)).isoformat(), "category": "Dairy", "added_at": datetime.now().isoformat(timespec="seconds")},
     ]
 if "saved_log" not in st.session_state: st.session_state.saved_log = []
 if "waste_log" not in st.session_state: st.session_state.waste_log = []
@@ -518,7 +518,7 @@ elif st.session_state.page == "My Pantry":
             if submitted:
                 if not name.strip(): st.error("Please enter a food name.")
                 else:
-                    st.session_state.pantry.append({"id":st.session_state.next_id,"name":name.strip(),"quantity":quantity.strip() or "1 item","expiry":expiry.isoformat(),"category":category,"cost":float(estimated_value)})
+                    st.session_state.pantry.append({"id":st.session_state.next_id,"name":name.strip(),"quantity":quantity.strip() or "1 item","expiry":expiry.isoformat(),"category":category,"cost":float(estimated_value),"added_at":datetime.now().isoformat(timespec="seconds")})
                     st.session_state.next_id += 1
                     st.success(f"{name.strip()} added to your pantry.")
                     st.rerun()
@@ -533,7 +533,12 @@ elif st.session_state.page == "My Pantry":
             date_text, date_color = expiry_status(item)
             with col:
                 warning_style = "background:#fff0ef;border:1px solid #f2b8b5;border-radius:8px;padding:9px 10px;font-weight:700;" if date_text.startswith("⚠️") else ""
-                st.markdown(f"<div class='panel'><div style='font-size:28px'>{emoji_for(item['name'])}</div><h3>{item['name']}</h3><p class='sub'>{item['quantity']} · {item['category']}</p><p style='font-size:12px;color:{date_color};{warning_style}'>{date_text}</p></div>", unsafe_allow_html=True)
+                added_at = item.get("added_at")
+                try:
+                    added_display = datetime.fromisoformat(added_at).astimezone().strftime("%d %b %Y · %I:%M %p") if added_at else "Date/time unavailable"
+                except (TypeError, ValueError):
+                    added_display = "Date/time unavailable"
+                st.markdown(f"<div class='panel'><div style='font-size:28px'>{emoji_for(item['name'])}</div><h3>{item['name']}</h3><p class='sub'>{item['quantity']} · {item['category']}</p><p style='font-size:12px;color:#647568'>🕒 Added: {added_display}</p><p style='font-size:12px;color:{date_color};{warning_style}'>{date_text}</p></div>", unsafe_allow_html=True)
                 # Give the two important actions half-width each so their labels are not clipped.
                 action_left, action_right = st.columns(2, gap="small")
                 if action_left.button("✓ I used it", key=f"used_{item['id']}", use_container_width=True):
