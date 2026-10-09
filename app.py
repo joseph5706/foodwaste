@@ -8,7 +8,12 @@ CSS = r"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 html, body, [class*="css"] {font-family:'DM Sans',sans-serif;}
-.stApp {background:#f7f8f3;color:#202b22;}
+.stApp {background:linear-gradient(135deg,#f7f8f3 0%,#e8f3e8 48%,#f2eee4 100%);background-attachment:fixed;color:#202b22;}
+/* Improve contrast for select menus, dropdown options, and radio/checkbox labels. */
+[data-baseweb="select"] > div {background:#ffffff !important;color:#202b22 !important;border-color:#cbd8ca !important;}
+[data-baseweb="select"] input, [data-baseweb="select"] span, [data-baseweb="popover"] li, [role="option"] {color:#202b22 !important;-webkit-text-fill-color:#202b22 !important;}
+[data-baseweb="popover"], ul[role="listbox"] {background:#ffffff !important;}
+[data-testid="stRadio"] label, [data-testid="stCheckbox"] label {color:#202b22 !important;}
 [data-testid="stSidebar"] {background:#fff;border-right:1px solid #e8ebe4;}
 [data-testid="stSidebar"] h1 {font-family:Manrope,sans-serif;font-weight:800;letter-spacing:-1px;color:#202b22;}
 .block-container {padding-top:1.6rem;padding-bottom:2rem;max-width:1500px;}
@@ -149,6 +154,7 @@ urgent = sum(1 for x in pantry if 0 <= days_left(x) <= 1)
 saved_count = len(st.session_state.saved_log)
 saved_value = sum(float(x.get("cost", 0)) for x in st.session_state.saved_log)
 waste_count = len(st.session_state.waste_log)
+wasted_value = sum(float(x.get("cost", 30.0)) for x in st.session_state.waste_log)
 
 if st.session_state.page == "Overview":
     st.markdown("<div class='hero'><div class='eyebrow'>YOUR KITCHEN DASHBOARD</div><h1>Good food deserves<br><span class='green'>a second chance.</span></h1><div class='sub'>A little planning goes a long way. Let's make every ingredient count.　🥬</div></div>", unsafe_allow_html=True)
@@ -185,11 +191,12 @@ elif st.session_state.page == "My Pantry":
             quantity = c2.text_input("Quantity", placeholder="e.g. 3 pieces")
             expiry = c1.date_input("Date label / expiry date", value=date.today()+timedelta(days=3))
             category = c2.selectbox("Category", ["Rice items", "Dairy", "Medicines", "Juices", "Snacks", "Fruits & vegetables", "Other"], help="Expiry warnings are category-aware. They do not guarantee food is safe after its date.")
+            estimated_value = st.number_input("Estimated value of this item (₹)", min_value=0.0, value=30.0, step=5.0, help="Used to estimate money saved or lost in your monthly report.")
             submitted = st.form_submit_button("Add to pantry")
             if submitted:
                 if not name.strip(): st.error("Please enter a food name.")
                 else:
-                    st.session_state.pantry.append({"id":st.session_state.next_id,"name":name.strip(),"quantity":quantity.strip() or "1 item","expiry":expiry.isoformat(),"category":category})
+                    st.session_state.pantry.append({"id":st.session_state.next_id,"name":name.strip(),"quantity":quantity.strip() or "1 item","expiry":expiry.isoformat(),"category":category,"cost":float(estimated_value)})
                     st.session_state.next_id += 1
                     st.success(f"{name.strip()} added to your pantry.")
                     st.rerun()
@@ -209,7 +216,7 @@ elif st.session_state.page == "My Pantry":
                 if b1.button("✓ I used it", key=f"used_{item['id']}", use_container_width=True):
                     st.session_state.saved_log.append({
                         "name": item["name"], "quantity": item["quantity"],
-                        "category": item["category"], "cost": 30.0,
+                        "category": item["category"], "cost": float(item.get("cost", 30.0)),
                         "date": date.today().isoformat(),
                     })
                     remove_item(item["id"])
@@ -218,7 +225,8 @@ elif st.session_state.page == "My Pantry":
                 if b2.button("✕ Wasted", key=f"wasted_{item['id']}", use_container_width=True):
                     st.session_state.waste_log.append({
                         "name": item["name"], "quantity": item["quantity"],
-                        "category": item["category"], "date": date.today().isoformat(),
+                        "category": item["category"], "cost": float(item.get("cost", 30.0)),
+                        "date": date.today().isoformat(),
                         "reason": "Not used before being removed from the pantry",
                     })
                     remove_item(item["id"])
@@ -261,10 +269,15 @@ elif st.session_state.page == "AI Recipe Lab":
 
 elif st.session_state.page == "Your Impact":
     st.markdown("<div class='eyebrow'>EVERY INGREDIENT COUNTS</div><h1>Your impact<span class='green'>.</span></h1><p class='sub'>See the food you used and the estimated savings you created.</p>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
+    total_logged_items = saved_count + waste_count
+    item_waste_rate = (waste_count / total_logged_items * 100) if total_logged_items else 0
+    total_logged_value = saved_value + wasted_value
+    value_waste_rate = (wasted_value / total_logged_value * 100) if total_logged_value else 0
+    c1, c2, c3, c4 = st.columns(4)
     with c1: st.markdown(f"<div class='metric-card'><div class='metric-label'>Food items used / rescued</div><div class='metric-value'>{saved_count}</div><div class='metric-foot'>logged by you</div></div>", unsafe_allow_html=True)
-    with c2: st.markdown(f"<div class='metric-card'><div class='metric-label'>Food items wasted</div><div class='metric-value'>{waste_count}</div><div class='metric-foot'>marked not used</div></div>", unsafe_allow_html=True)
-    with c3: st.markdown(f"<div class='metric-card'><div class='metric-label'>Estimated money saved</div><div class='metric-value'>{money(saved_value)}</div><div class='metric-foot'>based on your entries</div></div>", unsafe_allow_html=True)
+    with c2: st.markdown(f"<div class='metric-card'><div class='metric-label'>Food items wasted</div><div class='metric-value'>{waste_count}</div><div class='metric-foot'>{money(wasted_value)} estimated value lost</div></div>", unsafe_allow_html=True)
+    with c3: st.markdown(f"<div class='metric-card'><div class='metric-label'>Estimated money saved</div><div class='metric-value'>{money(saved_value)}</div><div class='metric-foot'>based on item values</div></div>", unsafe_allow_html=True)
+    with c4: st.markdown(f"<div class='metric-card'><div class='metric-label'>Waste percentage</div><div class='metric-value'>{item_waste_rate:.1f}%</div><div class='metric-foot'>{value_waste_rate:.1f}% of logged value wasted</div></div>", unsafe_allow_html=True)
     st.markdown("### Used / rescued list")
     if st.session_state.saved_log:
         for row in reversed(st.session_state.saved_log):
@@ -287,15 +300,18 @@ else:
     used_month = [x for x in st.session_state.saved_log if month_start.isoformat() <= x.get("date", "") <= month_end.isoformat()]
     wasted_month = [x for x in st.session_state.waste_log if month_start.isoformat() <= x.get("date", "") <= month_end.isoformat()]
     month_saved = sum(float(x.get("cost", 0)) for x in used_month)
+    month_wasted_value = sum(float(x.get("cost", 30.0)) for x in wasted_month)
     total_logged = len(used_month) + len(wasted_month)
     waste_rate = (len(wasted_month) / total_logged * 100) if total_logged else 0
+    total_month_value = month_saved + month_wasted_value
+    value_waste_rate = (month_wasted_value / total_month_value * 100) if total_month_value else 0
     st.markdown(f"### {month_start.strftime('%B %Y')}")
     c1, c2, c3, c4 = st.columns(4)
     for col, label, value, foot in [
         (c1, "Used / rescued", len(used_month), "items marked used"),
         (c2, "Not used / wasted", len(wasted_month), "items marked wasted"),
         (c3, "Estimated savings", money(month_saved), "from rescued food"),
-        (c4, "Waste share", f"{waste_rate:.0f}%", "of items you logged"),
+        (c4, "Waste share", f"{waste_rate:.1f}%", f"{value_waste_rate:.1f}% of value wasted"),
     ]:
         with col:
             st.markdown(f"<div class='metric-card'><div class='metric-label'>{label}</div><div class='metric-value'>{value}</div><div class='metric-foot'>{foot}</div></div>", unsafe_allow_html=True)
@@ -308,7 +324,7 @@ else:
     st.markdown("### 2. Not used / wasted this month")
     if wasted_month:
         for row in wasted_month:
-            st.markdown(f"- **{row['name']}** — {row.get('quantity', '1 item')} · {row['date']}")
+            st.markdown(f"- **{row['name']}** — {row.get('quantity', '1 item')} · {row['date']} · estimated value wasted {money(row.get('cost', 30.0))}")
     else:
         st.success("No wasted items were recorded for this month.")
     st.markdown("### 3. Suggestions for next month")
@@ -318,13 +334,13 @@ else:
         if wasted_month:
             waste_names = [x.get("name", "item") for x in wasted_month]
             common = max(set(waste_names), key=waste_names.count)
-            st.markdown(f"- **Plan around waste:** You logged {len(wasted_month)} wasted item(s). Review when they were bought and reduce the amount next time.")
+            st.markdown(f"- **Plan around waste:** You logged {len(wasted_month)} wasted item(s), worth an estimated **{money(month_wasted_value)}** ({value_waste_rate:.1f}% of the logged value). Review when they were bought and reduce the amount next time.")
             st.markdown(f"- **Buy smaller quantities:** {common} appears most often in your wasted list; consider buying less or planning a meal for it earlier.")
             st.markdown("- **Use a first-in, first-out shelf:** Put older items at the front and check your pantry twice a week.")
         else:
             st.markdown("- **Keep it up:** You have no items marked wasted this month. Continue planning meals around what is already in your pantry.")
         st.markdown("- **Make a weekly use-first plan:** Choose 2–3 meals that use ingredients nearing their labelled date before shopping again.")
         st.markdown("- **Store food correctly:** Refrigerate promptly when appropriate, keep raw and cooked foods separate, and follow package storage instructions.")
-    st.caption("This report counts item entries, not precise weight or environmental impact. Logs are currently held in Streamlit session state, so they are a prototype and may not survive refreshes, new sessions, or app restarts. Persistent monthly reports need a database or durable storage.")
+    st.caption("Waste value and percentages are estimates based on the item values entered (or ₹30 default for older/sample items). The item percentage is based on logged entries; the value percentage is based on estimated rupee value. This report counts item entries, not precise weight or environmental impact. Logs are currently held in Streamlit session state, so they may not survive refreshes, new sessions, or app restarts.")
 
 st.markdown("<hr><div style='display:flex;justify-content:space-between;color:#8b9389;font-size:10px'><span>Made with care for people and the planet</span><b>✳ FOODWISE AI · HACKATHON PROTOTYPE</b></div>", unsafe_allow_html=True)
