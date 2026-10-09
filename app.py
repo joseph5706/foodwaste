@@ -29,6 +29,10 @@ h1,h2,h3 {font-family:Manrope,sans-serif!important;letter-spacing:-.7px!importan
 .tip {background:#f0f2eb;border-radius:11px;padding:15px 17px;color:#687466;font-size:12px;line-height:1.6;}
 .stButton>button {background:#2e7547;color:white;border:0;border-radius:9px;font-weight:700;padding:.55rem 1rem;}
 .stButton>button:hover {background:#235f39;color:white;border:0;}
+/* Keep recipe preference text readable across Streamlit themes. */
+.stTextArea textarea, textarea[data-testid] {background-color:#ffffff !important;color:#202b22 !important;-webkit-text-fill-color:#202b22 !important;border:1px solid #d9e1d5 !important;border-radius:10px !important;caret-color:#202b22 !important;}
+.stTextArea textarea::placeholder {color:#788078 !important;-webkit-text-fill-color:#788078 !important;opacity:1 !important;}
+.stTextArea label, .stTextArea label p {color:#202b22 !important;}
 div[data-testid="stForm"] {background:#fff;border:1px solid #e8ebe4;border-radius:14px;padding:18px;}
 .recipe-box {background:#f0f5e9;border-radius:15px;padding:22px;}
 footer {color:#8b9389;}
@@ -162,27 +166,26 @@ elif st.session_state.page == "My Pantry":
                 st.markdown(f"<div class='panel'><div style='font-size:28px'>{emoji_for(item['name'])}</div><h3>{item['name']}</h3><p class='sub'>{item['quantity']} · {item['category']}</p><p style='font-size:12px;color:#a65d22'>{date_text}</p></div>", unsafe_allow_html=True)
                 b1, b2 = st.columns(2)
                 if b1.button("✓ I used it", key=f"used_{item['id']}", use_container_width=True):
-                    st.session_state.used_item_id = item["id"]
-                    st.session_state.used_item_name = item["name"]
+                    # Log the rescue immediately so the click updates both dashboard and impact page.
+                    # ₹30 is the default estimate; users can see the recorded value in Your Impact.
+                    st.session_state.saved_log.append({
+                        "name": item["name"],
+                        "cost": 30.0,
+                        "date": date.today().isoformat(),
+                    })
+                    remove_item(item["id"])
+                    st.session_state.foodwise_flash = f"Nice! {item['name']} was logged as rescued (estimated ₹30 saved)."
                     st.rerun()
                 if b2.button("Remove", key=f"remove_{item['id']}", use_container_width=True):
                     remove_item(item["id"]); st.rerun()
-    if "used_item_id" in st.session_state:
-        st.markdown("### Log food rescued")
-        st.write(f"You used **{st.session_state.used_item_name}** instead of discarding it.")
-        with st.form("save_food_form"):
-            cost = st.number_input("Estimated value saved (₹)", min_value=0.0, value=30.0, step=5.0)
-            c1, c2 = st.columns(2)
-            confirm = c1.form_submit_button("Save impact")
-            cancel = c2.form_submit_button("Cancel")
-            if confirm:
-                st.session_state.saved_log.append({"name":st.session_state.used_item_name,"cost":cost,"date":date.today().isoformat()})
-                remove_item(st.session_state.used_item_id)
-                del st.session_state.used_item_id; del st.session_state.used_item_name
-                st.success("Nice! Food rescued and impact logged."); st.rerun()
-            if cancel:
-                del st.session_state.used_item_id; del st.session_state.used_item_name
-                st.rerun()
+    if st.session_state.get("foodwise_flash"):
+        st.success(st.session_state.foodwise_flash)
+        del st.session_state.foodwise_flash
+    if st.session_state.saved_log:
+        st.markdown("### Recent food rescued")
+        st.caption("Each ‘I used it’ click logs an item with a default estimated value of ₹30.")
+        for row in reversed(st.session_state.saved_log[-5:]):
+            st.markdown(f"**{row['name']}** · {row['date']} — {money(row['cost'])}")
 
 elif st.session_state.page == "AI Recipe Lab":
     st.markdown("<div class='eyebrow'>CREATIVE COOKING, LESS WASTE</div><h1>AI Recipe Lab<span class='green'>.</span></h1><p class='sub'>Recipes start with what you already own—not another shopping trip.</p>", unsafe_allow_html=True)
