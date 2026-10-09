@@ -33,6 +33,10 @@ h1,h2,h3 {font-family:Manrope,sans-serif!important;letter-spacing:-.7px!importan
 .stTextArea textarea, textarea[data-testid] {background-color:#ffffff !important;color:#202b22 !important;-webkit-text-fill-color:#202b22 !important;border:1px solid #d9e1d5 !important;border-radius:10px !important;caret-color:#202b22 !important;}
 .stTextArea textarea::placeholder {color:#788078 !important;-webkit-text-fill-color:#788078 !important;opacity:1 !important;}
 .stTextArea label, .stTextArea label p {color:#202b22 !important;}
+/* High-contrast safety notice: pale green background with readable dark text. */
+div[data-testid="stAlert"] {background:#e8f4e8 !important;border:1px solid #b8d8bb !important;border-radius:12px !important;}
+div[data-testid="stAlert"] p, div[data-testid="stAlert"] span, div[data-testid="stAlert"] [data-testid="stMarkdownContainer"] {color:#23432b !important;-webkit-text-fill-color:#23432b !important;opacity:1 !important;}
+div[data-testid="stAlert"] svg {fill:#2e7547 !important;color:#2e7547 !important;}
 div[data-testid="stForm"] {background:#fff;border:1px solid #e8ebe4;border-radius:14px;padding:18px;}
 .recipe-box {background:#f0f5e9;border-radius:15px;padding:22px;}
 footer {color:#8b9389;}
