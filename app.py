@@ -8,21 +8,49 @@ CSS = r"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 html, body, [class*="css"] {font-family:'DM Sans',sans-serif;}
-.stApp {background:linear-gradient(135deg,#f7f8f3 0%,#e8f3e8 48%,#f2eee4 100%);background-attachment:fixed;color:#202b22;}
+/* Deep midnight-blue gradient across Streamlit's real page layers. */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"], .main, .stApp {
+  background: linear-gradient(135deg, #06152e 0%, #0b2854 38%, #123e73 70%, #071a36 100%) !important;
+  background-attachment: fixed !important;
+  color: #eef5ff;
+}
+[data-testid="stMainBlockContainer"], .block-container {background: transparent !important;}
+[data-testid="stVerticalBlock"] > div {background-color: transparent;}
+/* Loading splash: orbiting food icons, shown only on the first app load per session. */
+.foodwise-splash {position:fixed;inset:0;z-index:999999;background:radial-gradient(circle at 50% 45%,#164d85 0%,#0b2854 42%,#041126 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;animation:splashOut .8s ease 3.8s forwards;pointer-events:none;}
+.foodwise-splash .brand {font-family:Manrope,sans-serif;font-size:clamp(27px,4vw,44px);font-weight:800;letter-spacing:2px;text-shadow:0 0 22px #6ec8ff66;}
+.foodwise-splash .tagline {color:#c4dcf7;font-size:13px;letter-spacing:2px;margin-top:9px;text-transform:uppercase;}
+.food-orbit {position:absolute;width:230px;height:230px;border:1px solid #8ccaff45;border-radius:50%;animation:orbitSpin 5s linear infinite;}
+.food-orbit.two {width:310px;height:310px;animation-duration:8s;animation-direction:reverse;border-color:#8ccaff30;}
+.food-orbit.three {width:390px;height:390px;animation-duration:12s;border-color:#8ccaff20;}
+.food-orbit span {position:absolute;font-size:36px;filter:drop-shadow(0 5px 12px #0008);left:calc(50% - 19px);top:-20px;}
+.food-orbit.two span {font-size:32px;left:calc(50% - 17px);}
+.food-orbit.three span {font-size:29px;left:calc(50% - 16px);}
+.loading-center {position:relative;z-index:2;text-align:center;}
+.loading-dots {display:flex;gap:7px;justify-content:center;margin-top:25px;}
+.loading-dots i {width:7px;height:7px;border-radius:50%;background:#75d5ff;animation:dotPulse 1s ease-in-out infinite;}
+.loading-dots i:nth-child(2){animation-delay:.15s}.loading-dots i:nth-child(3){animation-delay:.3s}
+@keyframes orbitSpin {to{transform:rotate(360deg)}}
+@keyframes dotPulse {0%,80%,100%{transform:scale(.6);opacity:.45}40%{transform:scale(1.2);opacity:1}}
+@keyframes splashOut {to{opacity:0;visibility:hidden}}
+@media(prefers-reduced-motion:reduce){.food-orbit,.loading-dots i{animation-duration:20s}.foodwise-splash{animation-delay:1.5s}}
+
 /* Improve contrast for select menus, dropdown options, and radio/checkbox labels. */
 [data-baseweb="select"] > div {background:#ffffff !important;color:#202b22 !important;border-color:#cbd8ca !important;}
 [data-baseweb="select"] input, [data-baseweb="select"] span, [data-baseweb="popover"] li, [role="option"] {color:#202b22 !important;-webkit-text-fill-color:#202b22 !important;}
 [data-baseweb="popover"], ul[role="listbox"] {background:#ffffff !important;}
 [data-testid="stRadio"] label, [data-testid="stCheckbox"] label {color:#202b22 !important;}
-[data-testid="stSidebar"] {background:#fff;border-right:1px solid #e8ebe4;}
+[data-testid="stSidebar"] {background:linear-gradient(180deg,#091b38 0%,#0d2d55 100%) !important;border-right:1px solid #234b78;}
+[data-testid="stSidebar"] * {color:#edf5ff;}
+[data-testid="stSidebar"] .tip {background:#123b65;color:#d6e9ff;}
 [data-testid="stSidebar"] h1 {font-family:Manrope,sans-serif;font-weight:800;letter-spacing:-1px;color:#202b22;}
 .block-container {padding-top:1.6rem;padding-bottom:2rem;max-width:1500px;}
-h1,h2,h3 {font-family:Manrope,sans-serif!important;letter-spacing:-.7px!important;color:#202b22;}
-.eyebrow {font-size:10px;font-weight:800;letter-spacing:1.5px;color:#8b9589;text-transform:uppercase;margin-bottom:8px;}
+h1,h2,h3 {font-family:Manrope,sans-serif!important;letter-spacing:-.7px!important;color:#f3f8ff;}
+.eyebrow {font-size:10px;font-weight:800;letter-spacing:1.5px;color:#a9c8eb;text-transform:uppercase;margin-bottom:8px;}
 .hero {background:#fff;border:1px solid #e8ebe4;border-radius:18px;padding:28px 30px;margin:0 0 20px;}
 .hero h1 {font-size:38px;line-height:1.16;margin:8px 0 12px;}
 .green {color:#2e7547;}
-.sub {font-size:13px;color:#788078;line-height:1.7;}
+.sub {font-size:13px;color:#c1d4eb;line-height:1.7;}
 .metric-card {background:#fff;border:1px solid #e8ebe4;border-radius:14px;padding:17px 18px;min-height:112px;}
 .metric-card.warn {background:#f0f7ed;border-color:#dfebd9;}
 .metric-label {font-size:12px;color:#778177;font-weight:600;}
@@ -48,6 +76,23 @@ footer {color:#8b9389;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
+
+if not st.session_state.get("foodwise_splash_shown", False):
+    st.session_state.foodwise_splash_shown = True
+    st.markdown("""
+    <div class="foodwise-splash">
+      <div class="food-orbit"><span>🍅</span></div>
+      <div class="food-orbit two"><span>🥛</span></div>
+      <div class="food-orbit three"><span>🍚</span></div>
+      <div class="loading-center">
+        <div style="font-size:48px;margin-bottom:10px">🥬</div>
+        <div class="brand">FOODWISE AI</div>
+        <div class="tagline">Fresh ideas. Less waste.</div>
+        <div class="loading-dots"><i></i><i></i><i></i></div>
+      </div>
+      <div style="position:absolute;bottom:35px;color:#a9c8eb;font-size:11px;letter-spacing:1px">PREPARING YOUR KITCHEN</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 if "pantry" not in st.session_state:
     today = date.today()
