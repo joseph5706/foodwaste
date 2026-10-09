@@ -512,9 +512,7 @@ def remove_item(item_id):
     st.session_state.pantry = [x for x in st.session_state.pantry if x["id"] != item_id]
 
 def make_recipes(preferences):
-    """Generate recipes with the live Google Gemini API; never return demo recipes."""
-    items = sorted(st.session_state.pantry, key=days_left)
-    ingredients = [x["name"] for x in items if days_left(x) >= 0]
+    """Generate general recipes with Gemini without reading or sending pantry data."""
 
     # Read Gemini credentials from Streamlit Cloud Secrets, or environment variables locally.
     try:
@@ -538,16 +536,15 @@ def make_recipes(preferences):
             "Keep your API key private. This app will not show sample recipes as if they were AI-generated."
         ), "Gemini setup required"
 
-    if not ingredients:
-        ingredients = ["no eligible pantry ingredients currently added"]
-
     prompt = (
-        "Create 3 practical recipes prioritizing these pantry ingredients: " + ", ".join(ingredients) +
-        ". Dietary preferences: " + (preferences.strip() or "none specified") +
-        ". Give each recipe a title, preparation/cooking time, ingredient quantities, 3-6 numbered steps, "
-        "and identify which pantry items it helps use first. Suggest reasonable basic pantry staples if needed. "
-        "Do not recommend using food that may be spoiled or unsafe. Explain that smell and appearance cannot guarantee safety. "
-        "Use clear, readable Markdown and concise practical instructions."
+        "Create 3 general, practical recipes. Do not access, infer, mention, or use any pantry inventory. "
+        "Base the recipes only on the dietary preferences and cooking requirements provided by the user. "
+        "Dietary preferences and requirements: " + (preferences.strip() or "none specified") + ". "
+        "Choose common, widely available ingredients and include approximate quantities, preparation/cooking time, "
+        "and 3-6 numbered steps for each recipe. Use a professional, clear, formal tone. "
+        "Do not claim that the recipes are based on the user's pantry or available ingredients. "
+        "Do not recommend using food that may be spoiled or unsafe. Explain briefly that smell and appearance "
+        "cannot guarantee food safety. Return readable Markdown."
     )
 
     # Google now recommends the Interactions API for new Gemini integrations.
@@ -556,8 +553,8 @@ def make_recipes(preferences):
         "model": model,
         "input": prompt,
         "system_instruction": (
-            "You are FoodWise AI, a helpful cooking assistant focused on reducing food waste. "
-            "Prioritize the user's pantry, respect dietary preferences, and never advise eating unsafe or spoiled food."
+            "You are FoodWise AI, a professional cooking assistant. Generate general recipes without accessing or "
+            "using pantry inventory. Respect stated dietary preferences and never advise eating unsafe or spoiled food."
         ),
         "generation_config": {"thinking_level": "low"}
     }
@@ -733,13 +730,13 @@ elif st.session_state.page == "My Pantry":
             st.markdown(f"**{row['name']}** · {row.get('quantity', '1 item')} · {row['date']}")
 
 elif st.session_state.page == "AI Recipe Lab":
-    st.markdown("<div class='eyebrow'>CREATIVE COOKING, LESS WASTE</div><h1>AI Recipe Lab<span class='green'>.</span></h1><p class='sub'>Recipes start with what you already own—not another shopping trip.</p>", unsafe_allow_html=True)
+    st.markdown("<div class='eyebrow'>CREATIVE COOKING, LESS WASTE</div><h1>AI Recipe Lab<span class='green'>.</span></h1><p class='sub'>Explore practical recipe ideas tailored to your dietary preferences.</p>", unsafe_allow_html=True)
     left, right = st.columns([.8, 1.2], gap="large")
     with left:
-        st.markdown("<div class='recipe-box'><div style='font-size:28px'>♨</div><h2>Let's make something good.</h2><p>We'll look at your pantry and prioritize ingredients that need to be used soon.</p></div>", unsafe_allow_html=True)
+        st.markdown("<div class='recipe-box'><div style='font-size:28px'>♨</div><h2>Recipe recommendations</h2><p>Generate general recipe ideas using common ingredients. Your pantry inventory is not accessed for this feature.</p></div>", unsafe_allow_html=True)
         preferences = st.text_area("Dietary preferences (optional)", placeholder="e.g. vegetarian, no peanuts, quick meals...")
         if st.button("✦ Generate recipes →", use_container_width=True):
-            with st.spinner("Checking your pantry and preparing ideas..."):
+            with st.spinner("Preparing recipe recommendations..."):
                 result, mode = make_recipes(preferences)
             st.session_state.recipes_result = result
             st.session_state.recipes_mode = mode
@@ -749,7 +746,7 @@ elif st.session_state.page == "AI Recipe Lab":
         if st.session_state.get("recipes_result"):
             st.markdown(st.session_state.recipes_result)
         else:
-            st.markdown("<div class='panel' style='text-align:center;padding:45px 15px'><div style='font-size:42px'>🍲</div><b>Your next meal is waiting.</b><p class='sub'>Generate recipes to see ideas based on your current ingredients.</p></div>", unsafe_allow_html=True)
+            st.markdown("<div class='panel' style='text-align:center;padding:45px 15px'><div style='font-size:42px'>🍲</div><b>Your recipe ideas will appear here.</b><p class='sub'>Generate general recipes tailored to your stated preferences, without using pantry data.</p></div>", unsafe_allow_html=True)
     st.warning("Safety first: Do not use food that may be spoiled. Follow storage guidance, and discard food when safety is uncertain. Reheating does not make all improperly stored food safe.")
 
 elif st.session_state.page == "Your Impact":
