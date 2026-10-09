@@ -116,6 +116,88 @@ footer {color:#8b9389;}
 }
 [data-testid="stTooltipContent"] {background:#fffdf7 !important; box-shadow:0 4px 18px #243b2b22 !important;}
 [data-testid="stAlert"] a, [data-testid="stDialog"] a, [role="dialog"] a {color:#17683a !important; text-decoration:underline !important;}
+
+/* FIX: Streamlit/BaseWeb calendar day numbers and month controls must remain visible. */
+[data-baseweb="calendar"], [data-baseweb="datepicker"],
+[data-baseweb="calendar"] *, [data-baseweb="datepicker"] * {
+  color:#24352a !important;
+  -webkit-text-fill-color:#24352a !important;
+}
+[data-baseweb="calendar"] button,
+[data-baseweb="calendar"] [role="gridcell"],
+[data-baseweb="calendar"] [role="button"],
+[data-baseweb="calendar"] [role="grid"] button {
+  color:#24352a !important;
+  -webkit-text-fill-color:#24352a !important;
+  background:#fffdf7 !important;
+  opacity:1 !important;
+  border-radius:7px !important;
+}
+[data-baseweb="calendar"] button:hover,
+[data-baseweb="calendar"] [aria-selected="true"],
+[data-baseweb="calendar"] button[aria-pressed="true"] {
+  background:#dcefd8 !important;
+  color:#173d25 !important;
+  -webkit-text-fill-color:#173d25 !important;
+  font-weight:800 !important;
+}
+[data-baseweb="calendar"] [aria-disabled="true"] {
+  color:#9aa59a !important;
+  -webkit-text-fill-color:#9aa59a !important;
+}
+/* Food/category popup menus: prevent clipped labels and force readable option contrast. */
+[data-baseweb="popover"], [data-baseweb="menu"],
+[data-baseweb="popover"] ul, [data-baseweb="menu"] ul,
+ul[role="listbox"] {
+  background:#fffdf7 !important;
+  min-width:max-content !important;
+  max-width:min(92vw,420px) !important;
+}
+[data-baseweb="popover"] [role="option"],
+[data-baseweb="menu"] [role="option"],
+li[role="option"], [data-baseweb="select"] [role="option"] {
+  color:#24352a !important;
+  -webkit-text-fill-color:#24352a !important;
+  background:#fffdf7 !important;
+  opacity:1 !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  line-height:1.45 !important;
+  min-height:38px !important;
+  padding-top:9px !important;
+  padding-bottom:9px !important;
+}
+[data-baseweb="popover"] [role="option"]:hover,
+[data-baseweb="menu"] [role="option"]:hover,
+[role="option"][aria-selected="true"] {
+  background:#e4f1df !important;
+  color:#173d25 !important;
+  -webkit-text-fill-color:#173d25 !important;
+}
+/* Pantry inputs/select controls: enough width and contrast for complete option names. */
+[data-testid="stSelectbox"] [data-baseweb="select"] > div,
+[data-testid="stMultiSelect"] [data-baseweb="select"] > div {
+  min-height:44px !important;
+  background:#fffdf7 !important;
+  color:#24352a !important;
+}
+[data-testid="stSelectbox"] [data-baseweb="select"] *,
+[data-testid="stMultiSelect"] [data-baseweb="select"] *,
+[data-testid="stDateInput"] input,
+[data-testid="stNumberInput"] input {
+  color:#24352a !important;
+  -webkit-text-fill-color:#24352a !important;
+}
+[data-testid="stSelectbox"] [data-baseweb="select"] input {
+  min-width:3rem !important;
+}
+[data-testid="stSelectbox"] label, [data-testid="stDateInput"] label,
+[data-testid="stNumberInput"] label, [data-testid="stTextInput"] label {
+  color:#24352a !important;
+  font-weight:600 !important;
+}
+
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
