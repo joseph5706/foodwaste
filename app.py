@@ -344,6 +344,317 @@ li[role="option"], li[role="option"] * {
   background: #17492b !important;
   border-color: #17492b !important;
 }
+
+/* ===== FOODWISE AI — PREMIUM VISUAL UPGRADE ===== */
+
+:root {
+  --fw-forest: #173f2d;
+  --fw-green: #2e7547;
+  --fw-lime: #d7f36a;
+  --fw-paper: #f6f8f1;
+  --fw-border: #e0e8db;
+  --fw-muted: #718071;
+}
+
+/* Refined page background */
+html, body, .stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"] {
+  background:
+    radial-gradient(ellipse at 8% 0%, #e0eedb 0%, transparent 36%),
+    linear-gradient(135deg, #f7f8f3 0%, #edf4e9 55%, #f5f1e7 100%)
+    !important;
+  color: #202b22;
+}
+
+.block-container {
+  max-width: 1440px;
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+/* Stronger, more polished headings */
+h1, h2, h3 {
+  font-family: 'Manrope', sans-serif !important;
+  letter-spacing: -1px !important;
+  color: #183a29 !important;
+}
+
+h1 {
+  font-weight: 800 !important;
+  line-height: 1.12 !important;
+}
+
+h2, h3 {
+  font-weight: 750 !important;
+}
+
+.eyebrow {
+  color: #47734c;
+  letter-spacing: 1.8px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* Premium hero panel */
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(120deg, #ffffff 0%, #f5faef 100%);
+  border: 1px solid #e0e9d9;
+  border-radius: 24px;
+  padding: 36px;
+  margin-bottom: 26px;
+  box-shadow: 0 12px 38px #294a2b0a;
+}
+
+.hero h1 {
+  font-size: clamp(32px, 4vw, 48px);
+  letter-spacing: -2px !important;
+}
+
+.green {
+  color: #39784a;
+}
+
+.sub {
+  color: #728073;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+/* Elevated dashboard metric cards */
+.metric-card {
+  height: 100%;
+  min-height: 132px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--fw-border);
+  border-radius: 19px;
+  box-shadow: 0 6px 22px #263f2b08;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 13px 28px #263f2b12;
+}
+
+.metric-card.warn {
+  background: linear-gradient(145deg, #f4f9e9, #eaf4df);
+  border-color: #d9e8c9;
+}
+
+.metric-label {
+  color: #718071;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.metric-value {
+  color: #1b422d;
+  font-size: clamp(24px, 2.3vw, 32px);
+  font-weight: 800;
+  letter-spacing: -1.3px;
+}
+
+.metric-foot {
+  color: #899588;
+  font-size: 11px;
+}
+
+/* Consistent rounded panels and ingredient cards */
+.panel,
+div[data-testid="stForm"] {
+  background: #fff;
+  border: 1px solid var(--fw-border);
+  border-radius: 19px;
+  box-shadow: 0 7px 25px #263f2b07;
+}
+
+.panel {
+  padding: 23px;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.panel:hover {
+  border-color: #c9ddc1;
+  box-shadow: 0 10px 28px #263f2b0d;
+}
+
+.food-row {
+  padding: 17px 4px;
+  border-bottom: 1px solid #eaf0e7;
+  line-height: 1.8;
+}
+
+.recipe-box {
+  background: linear-gradient(145deg, #edf5e5, #e2efd8);
+  border: 1px solid #dce9d3;
+  border-radius: 20px;
+  padding: 26px;
+}
+
+.tip {
+  background: #eef4e9;
+  border: 1px solid #e3ebdc;
+  border-radius: 14px;
+  padding: 17px;
+  line-height: 1.75;
+}
+
+/* Forest-green buttons with smoother hover states */
+.stButton > button,
+.stFormSubmitButton > button {
+  min-height: 43px;
+  border: 1px solid #2e7547;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #347d4c, #245f3a);
+  color: #fff !important;
+  font-weight: 750;
+  box-shadow: 0 4px 10px #245f3a15;
+  transition: transform .18s ease, box-shadow .18s ease,
+              background .18s ease;
+}
+
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
+  background: #194b2e;
+  border-color: #194b2e;
+  color: #fff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px #245f3a22;
+}
+
+/* Keep sidebar navigation legible and refined */
+[data-testid="stSidebar"] {
+  background: linear-gradient(180deg, #f0f7eb 0%, #e4efe0 100%)
+    !important;
+  border-right: 1px solid #dce8d7;
+}
+
+[data-testid="stSidebar"] > div:first-child {
+  padding-top: 1.5rem;
+}
+
+[data-testid="stSidebar"] .stButton > button {
+  border-radius: 12px;
+  min-height: 45px;
+  text-align: left;
+  box-shadow: none;
+}
+
+[data-testid="stSidebar"] .stButton > button:hover {
+  background: #194b2e !important;
+}
+
+/* More polished input fields */
+.stTextInput input,
+.stNumberInput input,
+.stTextArea textarea,
+[data-testid="stDateInput"] input,
+[data-baseweb="select"] > div {
+  border-radius: 11px !important;
+  border-color: #d6e2d1 !important;
+  background-color: #fffdf9 !important;
+  color: #202b22 !important;
+}
+
+.stTextInput input:focus,
+.stNumberInput input:focus,
+.stTextArea textarea:focus {
+  border-color: #76a96d !important;
+  box-shadow: 0 0 0 3px #76a96d20 !important;
+}
+
+/* Better spacing between Streamlit sections */
+div[data-testid="stVerticalBlock"] {
+  gap: 1rem;
+}
+
+div[data-testid="stAlert"] {
+  border-radius: 14px !important;
+}
+
+/* Match the loading animation to the forest-green identity */
+.foodwise-splash {
+  background:
+    radial-gradient(ellipse at 50% 42%, #315d40 0%, #173d2c 46%,
+    #0b2118 100%) !important;
+}
+
+.foodwise-splash:before,
+.foodwise-splash:after {
+  border-color: #d7f36a20;
+  box-shadow: 0 0 90px #d7f36a08,
+              inset 0 0 80px #d7f36a08;
+}
+
+.foodwise-splash .brand {
+  text-shadow: 0 0 22px #d7f36a35;
+}
+
+.foodwise-splash .tagline {
+  color: #dbe9d5;
+}
+
+.food-orbit,
+.food-orbit.two,
+.food-orbit.three {
+  border-color: #d7f36a45;
+}
+
+.food-orbit span {
+  border-color: #d7f36a40;
+}
+
+.loading-center {
+  border-color: #d7f36a35;
+  background: radial-gradient(ellipse at top, #d7f36a12, transparent 75%);
+}
+
+.loading-logo {
+  filter: drop-shadow(0 0 18px #d7f36a55);
+}
+
+.loading-dots i {
+  background: #d7f36a;
+  box-shadow: 0 0 12px #d7f36a;
+}
+
+/* Mobile and smaller screens */
+@media (max-width: 768px) {
+  .block-container {
+    padding: 1.2rem 1rem 2rem;
+  }
+
+  .hero {
+    padding: 24px 21px;
+    border-radius: 19px;
+  }
+
+  .hero h1 {
+    font-size: 32px;
+  }
+
+  .metric-card {
+    padding: 17px;
+    min-height: 112px;
+  }
+
+  .panel {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metric-card,
+  .panel,
+  .stButton > button,
+  .stFormSubmitButton > button {
+    transition: none !important;
+  }
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
