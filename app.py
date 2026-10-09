@@ -655,6 +655,32 @@ div[data-testid="stAlert"] {
     transition: none !important;
   }
 }
+
+/* Recipe recommendations layout fix */
+.recipe-recommendations {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    align-items: stretch;
+    width: 100%;
+}
+
+.recipe-recommendations > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+    .recipe-recommendations {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .recipe-recommendations {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
