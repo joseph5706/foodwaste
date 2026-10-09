@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
-import os, json, urllib.request
+import os, json, urllib.request, re
 
 st.set_page_config(page_title="FoodWise AI — Save Food. Save Money.", page_icon="🥬", layout="wide")
 
@@ -429,6 +429,55 @@ def now_ist():
     return datetime.now(ZoneInfo("Asia/Kolkata"))
 
 
+def get_whatsapp_config():
+    """Read WhatsApp Cloud API credentials from Streamlit secrets or environment."""
+    token = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+    phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+    try:
+        token = token or str(st.secrets.get("WHATSAPP_ACCESS_TOKEN", ""))
+        phone_id = phone_id or str(st.secrets.get("WHATSAPP_PHONE_NUMBER_ID", ""))
+    except Exception:
+        pass
+    return token.strip(), phone_id.strip()
+
+
+def send_whatsapp_message(to_number, message):
+    """Send a WhatsApp text via Meta WhatsApp Cloud API."""
+    token, phone_id = get_whatsapp_config()
+    if not token or not phone_id:
+        return False, "WhatsApp API credentials are not configured yet. Add WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID to Streamlit Cloud → Settings → Secrets."
+    digits = re.sub(r"\D", "", to_number or "")
+    if not digits or len(digits) < 8 or len(digits) > 15:
+        return False, "Enter a valid WhatsApp number with country code, e.g. 919876543210 (no + or spaces needed)."
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": digits,
+        "type": "text",
+        "text": {"preview_url": False, "body": message[:4000]},
+    }
+    req = urllib.request.Request(
+        f"https://graph.facebook.com/v21.0/{phone_id}/messages",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            if response.status in (200, 201) and result.get("messages"):
+                return True, "WhatsApp message accepted by Meta for delivery."
+            return False, "WhatsApp API did not confirm the message. Check your Meta WhatsApp setup."
+    except Exception as exc:
+        detail = str(exc)
+        try:
+            if getattr(exc, "read", None):
+                detail = exc.read().decode("utf-8")[:500]
+        except Exception:
+            pass
+        return False, f"Could not send WhatsApp message. Check the API credentials, recipient opt-in, and Meta error details: {detail}"
+
+
 def format_added_at(value):
     """Format stored timestamps in IST; treat older naive timestamps as IST."""
     if not value:
@@ -491,8 +540,8 @@ def make_recipes(preferences):
 with st.sidebar:
     st.markdown("# ✳ foodwise<span style='color:#2e7547'>.ai</span>", unsafe_allow_html=True)
     st.markdown("<div class='eyebrow'>YOUR KITCHEN</div>", unsafe_allow_html=True)
-    choices = ["Overview", "My Pantry", "AI Recipe Lab", "Your Impact", "Monthly Report"]
-    for choice, icon in zip(choices, ["⌂", "▦", "♨", "↗", "▤"]):
+    choices = ["Overview", "My Pantry", "AI Recipe Lab", "Your Impact", "Monthly Report", "WhatsApp Alerts"]
+    for choice, icon in zip(choices, ["⌂", "▦", "♨", "↗", "▤", "☏"]):
         if st.button(f"{icon}  {choice}", key="nav_"+choice, use_container_width=True):
             st.session_state.page = choice
             st.rerun()
@@ -646,6 +695,53 @@ elif st.session_state.page == "Your Impact":
             st.markdown(f"**{row['name']}** · {row.get('quantity', '1 item')} · {row['date']} — {row.get('reason', 'Marked as wasted')}")
     else:
         st.success("No wasted items logged yet. Great start — keep tracking honestly.")
+
+elif st.session_state.page == "WhatsApp Alerts":
+    st.markdown("<div class='eyebrow'>EXPIRY REMINDERS</div><h1>WhatsApp alerts<span class='green'>.</span></h1><p class='sub'>Get a WhatsApp reminder about pantry items that are approaching their labelled date.</p>", unsafe_allow_html=True)
+    st.info("To send real WhatsApp messages, connect the official Meta WhatsApp Cloud API in Streamlit Cloud Secrets. A phone number alone cannot send messages.")
+    saved_number = st.session_state.get("whatsapp_number", "")
+    with st.form("whatsapp_settings_form"):
+        phone_number = st.text_input("WhatsApp number (include country code)", value=saved_number, placeholder="e.g. 919876543210", help="Enter the recipient's number in international format, digits only. Get the recipient's permission first.")
+        reminder_days = st.selectbox("Remind me when items are due within", [0, 1, 2, 3, 5, 7], index=2, format_func=lambda n: "On the date only" if n == 0 else f"{n} day(s) before the date")
+        save_alert_settings = st.form_submit_button("Save alert preferences", use_container_width=True)
+        if save_alert_settings:
+            normalized = re.sub(r"\D", "", phone_number or "")
+            if len(normalized) < 8 or len(normalized) > 15:
+                st.error("Enter a valid number with country code, such as 919876543210.")
+            else:
+                st.session_state.whatsapp_number = normalized
+                st.session_state.whatsapp_reminder_days = int(reminder_days)
+                st.success("WhatsApp alert preferences saved for this app session.")
+    st.markdown("### Items that need a reminder")
+    selected_days = int(st.session_state.get("whatsapp_reminder_days", 2))
+    alert_items = [item for item in pantry if 0 <= days_left(item) <= selected_days]
+    if alert_items:
+        for item in alert_items:
+            remaining = days_left(item)
+            when = "due today" if remaining == 0 else f"due in {remaining} day(s)"
+            st.markdown(f"- **{item['name']}** ({item.get('quantity', '1 item')}) — {when}; date: {item['expiry']}")
+    else:
+        st.success(f"No pantry items are due within the next {selected_days} day(s).")
+    saved_number = st.session_state.get("whatsapp_number", "")
+    if saved_number:
+        st.markdown("### Send a message")
+        st.caption(f"Recipient: +{saved_number}")
+        test_col, expiry_col = st.columns(2)
+        if test_col.button("Send test WhatsApp", use_container_width=True):
+            ok, message = send_whatsapp_message(saved_number, "🥬 FoodWise AI test message. Your WhatsApp alert connection is working if you received this.")
+            (st.success if ok else st.error)(message)
+        if expiry_col.button("Send expiry reminders now", use_container_width=True, disabled=not alert_items):
+            lines = ["🥬 *FoodWise AI — Expiry reminder*", "Please check these pantry items:"]
+            for item in alert_items:
+                remaining = days_left(item)
+                due_text = "due today" if remaining == 0 else f"due in {remaining} day(s)"
+                lines.append(f"• {item['name']} ({item.get('quantity', '1 item')}) — {due_text}; date: {item['expiry']}")
+            lines.append("Follow the package/storage guidance. This reminder is not a guarantee that food is safe.")
+            ok, message = send_whatsapp_message(saved_number, "\n".join(lines))
+            (st.success if ok else st.error)(message)
+    else:
+        st.caption("Save a WhatsApp number above to enable sending controls.")
+    st.warning("Important: this version can send a test or expiry reminder when you press a button. Automatic messages at a future time need a scheduled service (such as GitHub Actions or a server cron job), persistent storage for your pantry and preferences, and approved WhatsApp API setup. Streamlit by itself does not run reliably as a background scheduler. Messages outside WhatsApp's customer-service window may require an approved message template.")
 
 else:
     st.markdown("<div class='eyebrow'>MONTHLY FOOD MANAGEMENT</div><h1>Monthly report<span class='green'>.</span></h1><p class='sub'>Review what you used, what went to waste, and how to improve next month.</p>", unsafe_allow_html=True)
