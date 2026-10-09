@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 import os, json, urllib.request
 
 st.set_page_config(page_title="FoodWise AI — Save Food. Save Money.", page_icon="🥬", layout="wide")
@@ -367,10 +368,10 @@ if not st.session_state.get("foodwise_splash_shown", False):
 if "pantry" not in st.session_state:
     today = date.today()
     st.session_state.pantry = [
-        {"id": 1, "name": "Spinach", "quantity": "1 bunch", "expiry": (today + timedelta(days=1)).isoformat(), "category": "Fruits & vegetables", "added_at": datetime.now().isoformat(timespec="seconds")},
-        {"id": 2, "name": "Tomatoes", "quantity": "4 pieces", "expiry": (today + timedelta(days=2)).isoformat(), "category": "Fruits & vegetables", "added_at": datetime.now().isoformat(timespec="seconds")},
-        {"id": 3, "name": "Cooked rice", "quantity": "2 cups", "expiry": today.isoformat(), "category": "Rice items", "added_at": datetime.now().isoformat(timespec="seconds")},
-        {"id": 4, "name": "Yogurt", "quantity": "1 cup", "expiry": (today + timedelta(days=3)).isoformat(), "category": "Dairy", "added_at": datetime.now().isoformat(timespec="seconds")},
+        {"id": 1, "name": "Spinach", "quantity": "1 bunch", "expiry": (today + timedelta(days=1)).isoformat(), "category": "Fruits & vegetables", "added_at": datetime.now(ZoneInfo("Asia/Kolkata")).isoformat(timespec="seconds")},
+        {"id": 2, "name": "Tomatoes", "quantity": "4 pieces", "expiry": (today + timedelta(days=2)).isoformat(), "category": "Fruits & vegetables", "added_at": datetime.now(ZoneInfo("Asia/Kolkata")).isoformat(timespec="seconds")},
+        {"id": 3, "name": "Cooked rice", "quantity": "2 cups", "expiry": today.isoformat(), "category": "Rice items", "added_at": datetime.now(ZoneInfo("Asia/Kolkata")).isoformat(timespec="seconds")},
+        {"id": 4, "name": "Yogurt", "quantity": "1 cup", "expiry": (today + timedelta(days=3)).isoformat(), "category": "Dairy", "added_at": datetime.now(ZoneInfo("Asia/Kolkata")).isoformat(timespec="seconds")},
     ]
 if "saved_log" not in st.session_state: st.session_state.saved_log = []
 if "waste_log" not in st.session_state: st.session_state.waste_log = []
@@ -423,11 +424,37 @@ def expiry_status(item):
     return (f"{days} day(s) until date", "#788078")
 
 
-def emoji_for(name):
+def now_ist():
+    """Use India Standard Time explicitly; Streamlit Cloud servers may use UTC."""
+    return datetime.now(ZoneInfo("Asia/Kolkata"))
+
+
+def format_added_at(value):
+    """Format stored timestamps in IST; treat older naive timestamps as IST."""
+    if not value:
+        return "Date/time unavailable"
+    try:
+        stamp = datetime.fromisoformat(value)
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+        else:
+            stamp = stamp.astimezone(ZoneInfo("Asia/Kolkata"))
+        return stamp.strftime("%d %b %Y · %I:%M:%S %p IST")
+    except (TypeError, ValueError):
+        return "Date/time unavailable"
+
+
+def emoji_for(name, category=None):
+    low = str(name).lower()
+    cat = str(category or "").lower()
+    # Check medicines before food keywords so medicine items never fall through to the tin emoji.
+    medicine_words = ("medicine", "medication", "tablet", "capsule", "pill", "syrup", "antibiotic", "paracetamol", "crocin", "dolo", "vitamin")
+    if cat == "medicines" or any(word in low for word in medicine_words):
+        return "💊"
     pairs = {"spinach":"🥬","tomato":"🍅","rice":"🍚","yogurt":"🥣","carrot":"🥕","apple":"🍎","banana":"🍌","bread":"🍞","milk":"🥛","potato":"🥔","onion":"🧅","egg":"🥚","cheese":"🧀","lemon":"🍋","beans":"🫘","lettuce":"🥗"}
-    low = name.lower()
     for key, emoji in pairs.items():
-        if key in low: return emoji
+        if key in low:
+            return emoji
     return "🥫"
 
 def money(value): return "₹" + format(float(value or 0), ",.2f").rstrip("0").rstrip(".")
@@ -495,7 +522,7 @@ if st.session_state.page == "Overview":
         for item in priority:
             d = days_left(item)
             due, due_color = expiry_status(item)
-            st.markdown(f"<div class='food-row'>{emoji_for(item['name'])}　<b>{item['name']}</b><br><span style='color:{due_color};font-size:12px;font-weight:{'700' if due.startswith('⚠️') else '400'}'>{item['quantity']} · {due}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='food-row'>{emoji_for(item['name'], item.get('category'))}　<b>{item['name']}</b><br><span style='color:{due_color};font-size:12px;font-weight:{'700' if due.startswith('⚠️') else '400'}'>{item['quantity']} · {due}</span></div>", unsafe_allow_html=True)
         if st.button("View pantry ↗", key="overview_pantry"):
             st.session_state.page = "My Pantry"; st.rerun()
     with right:
@@ -518,7 +545,7 @@ elif st.session_state.page == "My Pantry":
             if submitted:
                 if not name.strip(): st.error("Please enter a food name.")
                 else:
-                    st.session_state.pantry.append({"id":st.session_state.next_id,"name":name.strip(),"quantity":quantity.strip() or "1 item","expiry":expiry.isoformat(),"category":category,"cost":float(estimated_value),"added_at":datetime.now().isoformat(timespec="seconds")})
+                    st.session_state.pantry.append({"id":st.session_state.next_id,"name":name.strip(),"quantity":quantity.strip() or "1 item","expiry":expiry.isoformat(),"category":category,"cost":float(estimated_value),"added_at":now_ist().isoformat(timespec="seconds")})
                     st.session_state.next_id += 1
                     st.success(f"{name.strip()} added to your pantry.")
                     st.rerun()
@@ -535,10 +562,10 @@ elif st.session_state.page == "My Pantry":
                 warning_style = "background:#fff0ef;border:1px solid #f2b8b5;border-radius:8px;padding:9px 10px;font-weight:700;" if date_text.startswith("⚠️") else ""
                 added_at = item.get("added_at")
                 try:
-                    added_display = datetime.fromisoformat(added_at).astimezone().strftime("%d %b %Y · %I:%M %p") if added_at else "Date/time unavailable"
+                    added_display = format_added_at(added_at)
                 except (TypeError, ValueError):
                     added_display = "Date/time unavailable"
-                st.markdown(f"<div class='panel'><div style='font-size:28px'>{emoji_for(item['name'])}</div><h3>{item['name']}</h3><p class='sub'>{item['quantity']} · {item['category']}</p><p style='font-size:12px;color:#647568'>🕒 Added: {added_display}</p><p style='font-size:12px;color:{date_color};{warning_style}'>{date_text}</p></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='panel'><div style='font-size:28px'>{emoji_for(item['name'], item.get('category'))}</div><h3>{item['name']}</h3><p class='sub'>{item['quantity']} · {item['category']}</p><p style='font-size:12px;color:#647568'>🕒 Added: {added_display}</p><p style='font-size:12px;color:{date_color};{warning_style}'>{date_text}</p></div>", unsafe_allow_html=True)
                 # Give the two important actions half-width each so their labels are not clipped.
                 action_left, action_right = st.columns(2, gap="small")
                 if action_left.button("✓ I used it", key=f"used_{item['id']}", use_container_width=True):
