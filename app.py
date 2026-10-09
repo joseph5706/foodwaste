@@ -198,6 +198,115 @@ li[role="option"], [data-baseweb="select"] [role="option"] {
   font-weight:600 !important;
 }
 
+
+/* Final Streamlit Cloud compatibility fix: BaseWeb menus are rendered in a portal
+   near the end of the document, so style their actual popup and nested text nodes. */
+[data-baseweb="popover"],
+[data-baseweb="popover"] > div,
+[data-baseweb="popover"] [data-baseweb="menu"],
+[data-baseweb="menu"],
+[role="listbox"],
+[role="listbox"] > div {
+  background-color: #fffdf7 !important;
+  color: #202b22 !important;
+  opacity: 1 !important;
+}
+[data-baseweb="popover"] [role="option"],
+[data-baseweb="popover"] [role="option"] *,
+[data-baseweb="menu"] [role="option"],
+[data-baseweb="menu"] [role="option"] *,
+[role="listbox"] [role="option"],
+[role="listbox"] [role="option"] *,
+li[role="option"], li[role="option"] * {
+  background-color: transparent !important;
+  color: #202b22 !important;
+  -webkit-text-fill-color: #202b22 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+[data-baseweb="popover"] [role="option"]:hover,
+[data-baseweb="menu"] [role="option"]:hover,
+[role="listbox"] [role="option"]:hover,
+[role="option"][aria-selected="true"] {
+  background-color: #e4f1df !important;
+  color: #173d25 !important;
+  -webkit-text-fill-color: #173d25 !important;
+}
+/* Streamlit versions use different internal markup for the date picker. */
+[data-testid="stDateInput"] input,
+[data-testid="stDateInput"] input *,
+[data-testid="stDateInput"] [data-baseweb="input"] > div,
+[data-testid="stDateInput"] [data-baseweb="input"] input {
+  background-color: #fffdf7 !important;
+  color: #202b22 !important;
+  -webkit-text-fill-color: #202b22 !important;
+  caret-color: #202b22 !important;
+  opacity: 1 !important;
+}
+[data-baseweb="calendar"],
+[data-baseweb="calendar"] > div,
+[data-baseweb="datepicker"],
+[data-baseweb="datepicker"] > div,
+[data-baseweb="popover"] [data-baseweb="calendar"],
+[data-baseweb="popover"] [data-baseweb="datepicker"],
+[data-baseweb="popover"] [role="grid"],
+[data-baseweb="popover"] [role="grid"] * {
+  background-color: #fffdf7 !important;
+  color: #202b22 !important;
+  -webkit-text-fill-color: #202b22 !important;
+  opacity: 1 !important;
+}
+[data-baseweb="calendar"] button,
+[data-baseweb="calendar"] button *,
+[data-baseweb="calendar"] [role="gridcell"],
+[data-baseweb="calendar"] [role="gridcell"] *,
+[data-baseweb="calendar"] [role="button"],
+[data-baseweb="datepicker"] button,
+[data-baseweb="datepicker"] button *,
+[data-baseweb="datepicker"] [role="gridcell"],
+[data-baseweb="datepicker"] [role="gridcell"] *,
+[data-baseweb="popover"] [role="grid"] button,
+[data-baseweb="popover"] [role="grid"] button * {
+  color: #202b22 !important;
+  -webkit-text-fill-color: #202b22 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+[data-baseweb="calendar"] button:hover,
+[data-baseweb="calendar"] [aria-selected="true"],
+[data-baseweb="datepicker"] button:hover,
+[data-baseweb="datepicker"] [aria-selected="true"],
+[data-baseweb="popover"] [role="grid"] [aria-selected="true"] {
+  background-color: #dcefd8 !important;
+  color: #173d25 !important;
+  -webkit-text-fill-color: #173d25 !important;
+}
+/* Some Streamlit builds use react-datepicker class names instead of BaseWeb. */
+.react-datepicker,
+.react-datepicker__month-container,
+.react-datepicker__header,
+.react-datepicker__month,
+.react-datepicker__week,
+.react-datepicker__day-names {
+  background: #fffdf7 !important;
+  color: #202b22 !important;
+}
+.react-datepicker *,
+.react-datepicker__current-month,
+.react-datepicker__day-name,
+.react-datepicker__day,
+.react-datepicker__navigation-icon::before {
+  color: #202b22 !important;
+  -webkit-text-fill-color: #202b22 !important;
+  opacity: 1 !important;
+}
+.react-datepicker__day:hover,
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: #dcefd8 !important;
+  color: #173d25 !important;
+}
+
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
